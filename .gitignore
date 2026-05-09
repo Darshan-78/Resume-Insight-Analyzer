@@ -1,0 +1,5 @@
+resumeinsight/target/
+*.class
+.vscode/
+.idea/
+hs_err_pid*.log

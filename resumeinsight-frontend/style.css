@@ -1,0 +1,312 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+
+    background:
+        radial-gradient(circle at top left, #e0f2fe, transparent 40%),
+        radial-gradient(circle at bottom right, #eef2ff, transparent 40%),
+        linear-gradient(135deg, #f8fafc, #eef2ff);
+}
+.container {
+    width: 70%;
+    max-width: 900px;
+    margin: 50px auto;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 35px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    backdrop-filter: blur(6px);
+    border: 1px solid #e5e7eb;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+h1 {
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+textarea {
+    width: 100%;
+    height: 220px;
+    padding: 15px;
+    font-size: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    outline: none;
+    resize: none;
+    box-sizing: border-box;
+}
+
+textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+
+button {
+    display: block;
+    margin: 25px auto;
+    padding: 14px 35px;
+    font-size: 17px;
+    font-weight: bold;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(37,99,235,0.25);
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+#resultSection {
+    margin-top: 30px;
+    padding: 25px;
+    background: #f9fafb;
+    border-radius: 15px;
+    border: 1px solid #e5e7eb;
+    display: none;
+}
+
+h2 {
+    color: #111827;
+    margin-top: 20px;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+.best-role-card {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: white;
+    padding: 25px;
+    border-radius: 18px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.skill-badge {
+    background: #e0ecff;
+    color: #1d4ed8;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: bold;
+}
+
+.role-card {
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 15px;
+}
+
+.progress-bar {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #2563eb;
+    width: 0;
+    transition: width 1s ease-in-out;
+}
+
+.skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.role-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.role-name {
+    font-weight: bold;
+    color: #111827;
+}
+
+.role-score {
+    font-weight: bold;
+    color: #2563eb;
+}
+
+.best-role-card h2 {
+    color: white;
+    margin: 10px 0 0;
+}
+
+.small-heading {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.subtitle {
+    text-align: center;
+    color: #6b7280;
+    margin-bottom: 25px;
+    font-size: 15px;
+}
+
+.loading-text {
+    text-align: center;
+    color: #2563eb;
+    font-weight: bold;
+    display: none;
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.clear-btn {
+    background: #6b7280;
+}
+
+.clear-btn:hover {
+    background: #4b5563;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.char-counter {
+    text-align: right;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+.top-role {
+    border: 2px solid #2563eb;
+    background: #eff6ff;
+}
+
+.download-btn {
+    background: #10b981;
+    margin-left: 10px;
+}
+
+.download-btn:hover {
+    background: #059669;
+}
+
+.tagline {
+    text-align: center;
+    color: #475569;
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.feature-pills {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0 25px;
+}
+
+.feature-pills span {
+    background: #eef2ff;
+    color: #2563eb;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.input-label {
+    display: block;
+    font-weight: bold;
+    color: #111827;
+    margin-bottom: 8px;
+}
+
+.result-card {
+    margin-bottom: 20px;
+}
+
+.navbar {
+    width: 100%;
+    background: white;
+    padding: 15px 30px;   /* reduced from 60px */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-sizing: border-box;   /* prevents overflow */
+}
+
+.logo {
+    font-weight: bold;
+    font-size: 18px;
+    color: #2563eb;
+}
+
+.nav-items {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.result-card:hover {
+    transform: translateY(-3px);
+    transition: 0.2s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.role-selection {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.role-selection select {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 15px;
+    outline: none;
+    background: white;
+}
+
+.role-selection select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+
+.hidden {
+    display: none;
+}

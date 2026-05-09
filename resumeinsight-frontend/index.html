@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Insight Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="navbar">
+    <div class="logo">Resume Insight</div>
+    <div class="nav-items">Skill-Based Role Recommendation Tool</div>
+    </div>
+
+    <div class="container">
+
+        <h1>Resume Insight Analyzer</h1>
+
+          <p class="tagline">Rule-based resume role matcher for students and freshers</p>
+
+            <div class="feature-pills">
+            <span>🧠 Skill Detection</span>
+            <span>📊 Role Ranking</span>
+            <span>💬 Feedback</span>
+            <span>📄 Report Download</span>
+            </div>
+
+        <label class="input-label">Analysis Mode</label>
+
+        <div class="role-selection">
+        <select id="analysisMode">
+        <option value="all">Analyze All Roles</option>
+        <option value="selected">Analyze Selected Role</option>
+        </select>
+
+        <select id="roleDropdown" class="hidden">
+        <option value="Web Developer">Web Developer</option>
+        <option value="Java Developer">Java Developer</option>
+        <option value="Data Analyst">Data Analyst</option>
+        <option value="Mobile App Developer">Mobile App Developer</option>
+        <option value="Business Analyst">Business Analyst</option>
+        <option value="Cloud Engineer">Cloud Engineer</option>
+        <option value="ML Engineer">ML Engineer</option>
+        </select>
+        </div>
+
+       <label class="input-label">Resume Text</label>
+
+        <textarea id="resumeText" placeholder="Paste your resume text here..."></textarea>
+
+        <p id="charCount" class="char-counter">Characters: 0 / Recommended: 300-1500</p>
+        <div class="button-group">
+             <button onclick="analyzeResume()">Analyze Resume</button>
+             <button class="clear-btn" onclick="clearResume()">Clear</button>
+
+             <button class="download-btn" onclick="downloadReport()">
+                  Download Report
+             </button>
+       </div>
+
+        <p id="loadingMessage" class="loading-text">
+            Analyzing resume...
+        </p>
+
+        <div id="resultSection">
+
+            <div class="best-role-card">
+                <p class="small-heading">Best Role Recommendation</p>
+                <h2 id="bestRole"></h2>
+            </div>
+
+            <div class="result-card">
+                <h2>Feedback!</h2>
+                <p id="feedbackText"></p>
+            </div>
+
+            <div class="result-card">
+                <h2>Detected Skills</h2>
+                <div id="skillsList" class="skills-container"></div>
+            </div>
+
+            <div class="result-card">
+                <h2>Role Ranking</h2>
+                <div id="roleRanking" class="ranking-container"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+    <footer class="footer">
+    Resume Insight Analyzer • Discover your best career role based on your skills
+</footer>
+</body>
+</html>
