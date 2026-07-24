@@ -1,357 +1,651 @@
 package com.example.resumeinsight;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
-public class ResumeAnalyzerService { 
-    class Resume {
-    String text;
-    String words[];
-    String detectedSkills[];
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.languagetool.JLanguageTool;
+import org.languagetool.language.AmericanEnglish;
+import org.languagetool.rules.RuleMatch;
+import org.languagetool.rules.CategoryId;
 
-    Resume(String text) {
-        this.text = text.toLowerCase().trim();
-        this.words = this.text.split("[^a-zA-Z]+");
-        }
-    }
-    class Role {
-    String roleName;
-    String requiredSkills[];
-    int score;
-    String level;
-    String feedback;
-    int matchCount;
-    String missingSkills[];
+public class ResumeAnalyzerService {
 
-    Role(String roleName, String requiredSkills[]) {
-        this.roleName = roleName;
-        this.requiredSkills = requiredSkills;
-        }
-    }
-    
-// Normalize words (synonyms handling)
-    public String[] normalizeWords(String[] words) {
-
-    String[][] synonyms = {
-        {"js", "javascript"},
-        {"py", "python"},
-        {"reactjs", "react"},
-        {"node", "nodejs"}
+    // Predefined skills pool
+    public static final String[] ALL_SKILLS = {
+        "html", "css", "javascript", "react", "nodejs", "mysql", "git",
+        "java", "springboot", "sql", "maven", "hibernate", "junit",
+        "python", "excel", "pandas", "matplotlib", "seaborn", "powerbi",
+        "kotlin", "android", "flutter", "firebase", "xml",
+        "powerpoint", "tableau", "business_analysis", "communication",
+        "aws", "azure", "docker", "kubernetes", "terraform", "linux",
+        "numpy", "scikit-learn", "tensorflow", "jupyter"
     };
 
-    for(int i = 0; i < words.length; i++) {
-        for(int j = 0; j < synonyms.length; j++) {
-            if(words[i].equals(synonyms[j][0])) {
-                words[i] = synonyms[j][1];
+    public static final Map<String, String> SKILL_DISPLAY_NAMES = new HashMap<>();
+    static {
+        SKILL_DISPLAY_NAMES.put("html", "HTML");
+        SKILL_DISPLAY_NAMES.put("css", "CSS");
+        SKILL_DISPLAY_NAMES.put("javascript", "JavaScript");
+        SKILL_DISPLAY_NAMES.put("react", "React");
+        SKILL_DISPLAY_NAMES.put("nodejs", "Node.js");
+        SKILL_DISPLAY_NAMES.put("mysql", "MySQL");
+        SKILL_DISPLAY_NAMES.put("git", "Git");
+        SKILL_DISPLAY_NAMES.put("java", "Java");
+        SKILL_DISPLAY_NAMES.put("springboot", "Spring Boot");
+        SKILL_DISPLAY_NAMES.put("sql", "SQL");
+        SKILL_DISPLAY_NAMES.put("maven", "Maven");
+        SKILL_DISPLAY_NAMES.put("hibernate", "Hibernate");
+        SKILL_DISPLAY_NAMES.put("junit", "JUnit");
+        SKILL_DISPLAY_NAMES.put("python", "Python");
+        SKILL_DISPLAY_NAMES.put("excel", "Excel");
+        SKILL_DISPLAY_NAMES.put("pandas", "Pandas");
+        SKILL_DISPLAY_NAMES.put("matplotlib", "Matplotlib");
+        SKILL_DISPLAY_NAMES.put("seaborn", "Seaborn");
+        SKILL_DISPLAY_NAMES.put("powerbi", "Power BI");
+        SKILL_DISPLAY_NAMES.put("kotlin", "Kotlin");
+        SKILL_DISPLAY_NAMES.put("android", "Android");
+        SKILL_DISPLAY_NAMES.put("flutter", "Flutter");
+        SKILL_DISPLAY_NAMES.put("firebase", "Firebase");
+        SKILL_DISPLAY_NAMES.put("xml", "XML");
+        SKILL_DISPLAY_NAMES.put("powerpoint", "PowerPoint");
+        SKILL_DISPLAY_NAMES.put("tableau", "Tableau");
+        SKILL_DISPLAY_NAMES.put("business_analysis", "Business Analysis");
+        SKILL_DISPLAY_NAMES.put("communication", "Communication");
+        SKILL_DISPLAY_NAMES.put("aws", "AWS");
+        SKILL_DISPLAY_NAMES.put("azure", "Azure");
+        SKILL_DISPLAY_NAMES.put("docker", "Docker");
+        SKILL_DISPLAY_NAMES.put("kubernetes", "Kubernetes");
+        SKILL_DISPLAY_NAMES.put("terraform", "Terraform");
+        SKILL_DISPLAY_NAMES.put("linux", "Linux");
+        SKILL_DISPLAY_NAMES.put("numpy", "NumPy");
+        SKILL_DISPLAY_NAMES.put("scikit-learn", "Scikit-Learn");
+        SKILL_DISPLAY_NAMES.put("tensorflow", "TensorFlow");
+        SKILL_DISPLAY_NAMES.put("jupyter", "Jupyter");
+    }
+
+    public static String getSkillDisplayName(String skill) {
+        if (skill == null) return "";
+        return SKILL_DISPLAY_NAMES.getOrDefault(skill.toLowerCase().trim(), skill);
+    }
+
+    public static List<String> formatSkills(List<String> skills) {
+        List<String> formatted = new ArrayList<>();
+        if (skills != null) {
+            for (String skill : skills) {
+                formatted.add(getSkillDisplayName(skill));
             }
+        }
+        return formatted;
+    }
+
+    // Predefined roles
+    public static final String[] ROLES = {
+        "Web Developer", "Java Developer", "Data Analyst",
+        "Mobile App Developer", "Business Analyst",
+        "Cloud Engineer", "ML Engineer"
+    };
+
+    // Predefined skill sets mapped to roles
+    public static final String[][] ROLE_SKILLS = {
+        {"html", "css", "javascript", "react", "nodejs", "mysql", "git"},
+        {"java", "springboot", "sql", "maven", "git", "hibernate", "junit"},
+        {"python", "sql", "excel", "pandas", "matplotlib", "seaborn", "powerbi"},
+        {"java", "kotlin", "android", "flutter", "git", "firebase", "xml"},
+        {"excel", "sql", "powerpoint", "tableau", "business_analysis", "communication", "python"},
+        {"aws", "azure", "docker", "kubernetes", "terraform", "linux", "python"},
+        {"python", "numpy", "pandas", "scikit-learn", "tensorflow", "matplotlib", "jupyter"}
+    };
+
+    public static class RoleMapping {
+        private String roleName;
+        private List<String> requiredSkills;
+
+        public RoleMapping() {}
+
+        public RoleMapping(String roleName, List<String> requiredSkills) {
+            this.roleName = roleName;
+            this.requiredSkills = requiredSkills;
+        }
+
+        public String getRoleName() { return roleName; }
+        public void setRoleName(String roleName) { this.roleName = roleName; }
+        public List<String> getRequiredSkills() { return requiredSkills; }
+        public void setRequiredSkills(List<String> requiredSkills) { this.requiredSkills = requiredSkills; }
+    }
+
+    public static final List<RoleMapping> ROLE_MAPPINGS = new ArrayList<>();
+
+    static {
+        try (java.io.InputStream is = ResumeAnalyzerService.class.getClassLoader().getResourceAsStream("roles-skills.json")) {
+            if (is != null) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                RoleMapping[] mappings = mapper.readValue(is, RoleMapping[].class);
+                ROLE_MAPPINGS.addAll(Arrays.asList(mappings));
+            } else {
+                System.err.println("Warning: roles-skills.json not found in resources. Initializing fallback roles.");
+                initializeFallbackRoles();
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading roles-skills.json: " + e.getMessage());
+            initializeFallbackRoles();
         }
     }
 
-    return words;
-}
+    private static void initializeFallbackRoles() {
+        ROLE_MAPPINGS.clear();
+        for (int i = 0; i < ROLES.length; i++) {
+            ROLE_MAPPINGS.add(new RoleMapping(ROLES[i], Arrays.asList(ROLE_SKILLS[i])));
+        }
+    }
 
-    // Detect skills
-    public String[] detectSkills(String words[], String allSkills[]) {
-        String detected[] = new String[words.length];
-        int k = 0;
+    // Nested classes to maintain backward compatibility with any direct class instantiations
+    public class Resume {
+        String text;
+        String[] detectedSkills;
 
-        for(int i=0; i<words.length; i++) {
-            if(words[i].length() == 0) {
-                continue;
+        public Resume(String text) {
+            this.text = text;
+        }
+    }
+
+    public class Role {
+        String roleName;
+        String[] requiredSkills;
+        int score;
+        String level;
+        String feedback;
+        String[] missingSkills;
+
+        public Role(String roleName, String[] requiredSkills) {
+            this.roleName = roleName;
+            this.requiredSkills = requiredSkills;
+        }
+    }
+
+    /**
+     * Preprocesses text, normalizes whitespace, and resolves synonyms using word boundaries.
+     */
+    public String normalizeAndApplySynonyms(String text) {
+        if (text == null) {
+            return "";
+        }
+        String normalized = text.toLowerCase().trim();
+
+        // Synonym replacements (with boundaries to prevent partial word collision)
+        normalized = normalized.replaceAll("\\bjs\\b", "javascript");
+        normalized = normalized.replaceAll("\\breactjs\\b", "react");
+        normalized = normalized.replaceAll("\\bpy\\b", "python");
+        normalized = normalized.replaceAll("\\bnode\\b", "nodejs");
+        normalized = normalized.replaceAll("\\bspring\\s+boot\\b", "springboot");
+
+        return normalized;
+    }
+
+    /**
+     * Extracts predefined skills from text using regex boundaries, supporting hyphens and underscores.
+     */
+    public List<String> extractSkills(String text) {
+        List<String> detected = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return detected;
+        }
+        String normalized = normalizeAndApplySynonyms(text);
+
+        for (String skill : ALL_SKILLS) {
+            // Replace '-' or '_' with generic regex separator [-_\\s]?
+            String parsedSkill = skill.replace("-", "[-\\s_]?").replace("_", "[-\\s_]?");
+            Pattern pattern = Pattern.compile("\\b" + parsedSkill + "\\b", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(normalized);
+            if (matcher.find()) {
+                detected.add(skill);
             }
+        }
+        return detected;
+    }
 
-            for(int j=0; j<allSkills.length; j++) {
-                if(words[i].equals(allSkills[j])) {
-                    detected[k] = words[i];
-                    k++;
-                    break;
+    private static final Set<String> IGNORED_WORDS = new HashSet<>(Arrays.asList(
+        // Acronyms / Resume terms
+        "CGPA", "GPA", "BTECH", "MTECH", "BCA", "MCA", "BSC", "MSC", "BBA", "MBA", "BE", "ME",
+        "SSC", "HSC", "CBSE", "RBSE", "ICSE", "IB", "IGCSE", "AICTE", "UGC",
+        // Event / Competition names
+        "HACKSPLOSION", "CODEVITA", "LEETCODE", "HACKERRANK", "GEEKSFORGEEKS", "GITHUB", "LINKEDIN", "HACKEREARTH",
+        // Common Indian city names
+        "SAGWARA", "JAIPUR", "UDAIPUR", "MUMBAI", "DELHI", "BANGALORE", "BENGALURU", "PUNE", "CHENNAI", 
+        "HYDERABAD", "KOLKATA", "AHMEDABAD", "SURAT", "NOIDA", "GURGAON", "GURUGRAM", "KOTA", "AJMER", "JODHPUR", "BIKANER",
+        // Common Indian university abbreviations / names
+        "JECRC", "RTU", "LPU", "VIT", "NIT", "IIT", "BITS", "VTU", "UPTU", "AKTU", "BPUT", "RGPV", "GTU", "WBSCTE"
+    ));
+
+    private static final Set<String> CONTEXT_KEYWORDS = new HashSet<>(Arrays.asList(
+        "university", "college", "school", "institute", "academy", "board", 
+        "city", "district", "state", "center", "centre", "campus", "tech", 
+        "technology", "science", "sciences"
+    ));
+
+    private boolean isTitleCaseOrAllCaps(String word) {
+        if (word == null || word.isEmpty()) {
+            return false;
+        }
+        char firstChar = word.charAt(0);
+        return Character.isUpperCase(firstChar);
+    }
+
+    private boolean isNearKeyword(String text, int startPos, int endPos) {
+        int checkStart = Math.max(0, startPos - 40);
+        int checkEnd = Math.min(text.length(), endPos + 40);
+        String contextArea = text.substring(checkStart, checkEnd).toLowerCase();
+        
+        for (String keyword : CONTEXT_KEYWORDS) {
+            Pattern p = Pattern.compile("\\b" + keyword + "\\b");
+            if (p.matcher(contextArea).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Run English spelling and grammar checks on text using LanguageTool.
+     */
+    public List<GrammarIssue> checkGrammar(String text) {
+        List<GrammarIssue> issues = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return issues;
+        }
+        try {
+            JLanguageTool langTool = new JLanguageTool(new AmericanEnglish());
+            
+            // Disable low-value rule categories
+            langTool.disableCategory(new CategoryId("TYPOGRAPHY"));
+            langTool.disableCategory(new CategoryId("STYLE"));
+            
+            List<RuleMatch> matches = langTool.check(text);
+            for (RuleMatch match : matches) {
+                String ruleId = match.getRule().getId();
+                String categoryId = "";
+                if (match.getRule().getCategory() != null && match.getRule().getCategory().getId() != null) {
+                    categoryId = match.getRule().getCategory().getId().toString();
                 }
+
+                // 1. Filter out low-value grammar rule categories and comma placement rules
+                if ("TYPOGRAPHY".equals(categoryId) || "STYLE".equals(categoryId) || ruleId.contains("COMMA")) {
+                    continue;
+                }
+
+                int from = match.getFromPos();
+                int to = match.getToPos();
+                String matchedWord = text.substring(from, to).trim();
+
+                // 2. Custom spelling heuristics for proper nouns & acronyms
+                boolean isSpellingError = "TYPOS".equals(categoryId) || ruleId.startsWith("MORFOLOGIK_");
+                if (isSpellingError) {
+                    // Check custom ignore list
+                    if (IGNORED_WORDS.contains(matchedWord.toUpperCase())) {
+                        continue;
+                    }
+                    // Check if title case/ALL CAPS near institution/location clues
+                    if (isTitleCaseOrAllCaps(matchedWord) && isNearKeyword(text, from, to)) {
+                        continue;
+                    }
+                }
+
+                int startCtx = Math.max(0, from - 20);
+                int endCtx = Math.min(text.length(), to + 20);
+                String context = text.substring(startCtx, endCtx).trim();
+                if (startCtx > 0) context = "..." + context;
+                if (endCtx < text.length()) context = context + "...";
+
+                issues.add(new GrammarIssue(
+                    match.getMessage(),
+                    context,
+                    match.getSuggestedReplacements()
+                ));
             }
+        } catch (IOException e) {
+            System.err.println("LanguageTool analysis failed: " + e.getMessage());
         }
-
-        String result[] = new String[k];
-        for(int i=0; i<k; i++) {
-            result[i] = detected[i];
-        }
-
-        return result;
+        return issues;
     }
 
-    // Get level
     public String getLevel(int score) {
-        if(score <= 30) return "Beginner";
-        else if(score <= 60) return "Intermediate";
+        if (score <= 30) return "Beginner";
+        else if (score <= 60) return "Intermediate";
         else return "Strong";
     }
 
-    // Get feedback
-    public String getFeedback(int score, String role, String missingSkills[]) {
-
-        if(score == 100 || missingSkills.length == 0) {
+    public String getFeedback(int score, String role, String[] missingSkills) {
+        if (score == 100 || missingSkills.length == 0) {
             return "Excellent match for " + role + "!";
         }
-
-        if(score <= 30) {
+        if (score <= 30) {
             return "Improve fundamentals: " + String.join(", ", missingSkills);
-        }
-        else if(score <= 60) {
+        } else if (score <= 60) {
             return "Work on: " + String.join(", ", missingSkills);
-        }
-        else {
+        } else {
             return "Good, but improve: " + String.join(", ", missingSkills);
         }
     }
 
-    // Analyze resume for all roles
-   public ResumeResponse analyze(Resume resume, String selectedRole) {
-    StringBuilder report = new StringBuilder();
-    List<RoleMatchResponse> roleRanking = new ArrayList<>();
-    String bestRoleRecommendation = "";
+    private static final Set<String> WEAK_VERB_PHRASES = new HashSet<>(Arrays.asList(
+        "worked on", "helped with", "responsible for", "involved in", "assisted with", "participated in", "handled"
+    ));
 
-        // All skills list
-        String allSkills[] = {
-            "html","css","javascript","react","nodejs","mysql","git",
-            "java","springboot","sql","maven","hibernate","junit",
-            "python","excel","pandas","matplotlib","seaborn","powerbi",
-            "kotlin","android","flutter","firebase","xml",
-            "powerpoint","tableau","business_analysis","communication",
-            "aws","azure","docker","kubernetes","terraform","linux",
-            "numpy","scikit-learn","tensorflow","jupyter"
-        };
-   
-        // Normalize words first
-         resume.words = normalizeWords(resume.words);
+    public List<String> checkResumeStructure(String text) {
+        List<String> suggestions = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return suggestions;
+        }
 
-// Detect + remove duplicates
-        String detected[] = detectSkills(resume.words, allSkills);
-        String uniqueDetected[] = removeDuplicates(detected);
+        String uppercaseText = text.toUpperCase();
 
-        resume.detectedSkills = uniqueDetected;
+        // 1. Check sections
+        boolean hasContact = uppercaseText.contains("EMAIL") || uppercaseText.contains("PHONE") || 
+                             uppercaseText.contains("LINKEDIN") || uppercaseText.contains("CONTACT");
+        if (!hasContact) {
+            suggestions.add("No dedicated Contact Info section or contact keywords (Email, Phone) detected.");
+        }
 
-        int k = uniqueDetected.length;
+        boolean hasEducation = uppercaseText.contains("EDUCATION") || uppercaseText.contains("ACADEMIC");
+        if (!hasEducation) {
+            suggestions.add("Consider adding an Education section to list your academic background.");
+        }
 
-        // No skills case
-        if(k == 0) {
-            report.append("\nNo skills detected in resume.");
+        boolean hasSkills = uppercaseText.contains("SKILLS") || uppercaseText.contains("TECHNOLOGIES") || uppercaseText.contains("TECHNICAL SKILLS");
+        if (!hasSkills) {
+            suggestions.add("No dedicated Skills section detected. Make your competencies easily scanable.");
+        }
+
+        boolean hasProjectsExp = uppercaseText.contains("PROJECTS") || uppercaseText.contains("EXPERIENCE") || 
+                                 uppercaseText.contains("WORK") || uppercaseText.contains("EMPLOYMENT");
+        if (!hasProjectsExp) {
+            suggestions.add("Consider adding a Projects or Experience section to showcase your hands-on work.");
+        }
+
+        boolean hasCertifications = uppercaseText.contains("CERTIFICATIONS") || uppercaseText.contains("CERTIFICATES") || uppercaseText.contains("CREDENTIALS");
+        if (!hasCertifications) {
+            suggestions.add("Consider adding a Certifications section to display your credentials.");
+        }
+
+        // 2. Length check
+        String[] words = text.trim().split("\\s+");
+        if (words.length > 1000) {
+            suggestions.add("Your resume length suggests more than 2 pages of content (" + words.length + " words). Consider condensing it to 1-2 pages.");
+        }
+
+        return suggestions;
+    }
+
+    public List<ResumeResponse.BulletFeedbackItem> checkBulletPoints(String text) {
+        List<ResumeResponse.BulletFeedbackItem> feedback = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return feedback;
+        }
+
+        String[] lines = text.split("\\r?\\n");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            // Check common bullet prefixes
+            if (trimmed.startsWith("-") || trimmed.startsWith("•") || trimmed.startsWith("\u2013") || trimmed.startsWith("\u2014") || trimmed.startsWith("*")) {
+                String bulletText = trimmed.substring(1).trim();
+                if (bulletText.isEmpty()) {
+                    continue;
+                }
+
+                List<String> bulletSuggestions = new ArrayList<>();
+
+                // a) Check quantifiable metric
+                boolean hasMetric = bulletText.matches(".*\\d+.*") || 
+                                     bulletText.toLowerCase().contains("percent") || 
+                                     bulletText.toLowerCase().contains("percentage");
+                if (!hasMetric) {
+                    bulletSuggestions.add("Consider adding measurable impact to this point (e.g. a percentage, number, or scale).");
+                }
+
+                // b) Check weak passive verb
+                String lowerBullet = bulletText.toLowerCase();
+                String foundWeakPhrase = null;
+                for (String weakPhrase : WEAK_VERB_PHRASES) {
+                    if (lowerBullet.startsWith(weakPhrase)) {
+                        foundWeakPhrase = weakPhrase;
+                        break;
+                    }
+                }
+                if (foundWeakPhrase != null) {
+                    bulletSuggestions.add("Starts with passive phrase '" + foundWeakPhrase + "'. Suggest using a stronger action verb alternative (e.g. 'Developed', 'Led', 'Optimized', 'Implemented', 'Designed').");
+                }
+
+                if (!bulletSuggestions.isEmpty()) {
+                    feedback.add(new ResumeResponse.BulletFeedbackItem(trimmed, bulletSuggestions));
+                }
+            }
+        }
+        return feedback;
+    }
+
+    private int findHeaderIndex(String text, String... headers) {
+        String lower = text.toLowerCase();
+        for (String header : headers) {
+            int idx = lower.indexOf(header);
+            if (idx != -1) {
+                return idx;
+            }
+        }
+        return -1;
+    }
+
+    public List<ResumeResponse.PrioritizedSkill> prioritizeMissingSkills(List<String> missingSkills, String jobDescription) {
+        List<ResumeResponse.PrioritizedSkill> prioritized = new ArrayList<>();
+        if (missingSkills == null || missingSkills.isEmpty()) {
+            return prioritized;
+        }
+
+        if (jobDescription == null || jobDescription.trim().isEmpty()) {
+            for (String skill : missingSkills) {
+                prioritized.add(new ResumeResponse.PrioritizedSkill(getSkillDisplayName(skill), "Nice to have"));
+            }
+            return prioritized;
+        }
+
+        String lowerJd = jobDescription.toLowerCase();
+        int niceToHaveIndex = findHeaderIndex(jobDescription, "nice to have", "nice-to-have", "preferred", "plus", "desired", "beneficial");
+
+        class SkillPriorityInfo {
+            String name;
+            int score;
+            String priorityLabel;
             
-           return new ResumeResponse(
-           Arrays.asList(resume.detectedSkills),
-           roleRanking,
-           "No suitable role found"
-);
+            SkillPriorityInfo(String name, int score, String priorityLabel) {
+                this.name = name;
+                this.score = score;
+                this.priorityLabel = priorityLabel;
+            }
         }
 
-        // Print detected skills
-        report.append("Detected Skills:\n");
-        report.append("--------------------------------------\n");
-        report.append(String.join(", ", uniqueDetected)).append("\n\n");
+        List<SkillPriorityInfo> list = new ArrayList<>();
 
-        // Roles
-        String roles[] = {
-            "Web Developer", "Java Developer", "Data Analyst",
-            "Mobile App Developer", "Business Analyst",
-            "Cloud Engineer", "ML Engineer"
-        };
+        for (String skill : missingSkills) {
+            String parsedSkill = skill.replace("-", "[-\\s_]?").replace("_", "[-\\s_]?");
+            Pattern pattern = Pattern.compile("\\b" + parsedSkill + "\\b", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(lowerJd);
 
-        ArrayList<Role> bestRoles = new ArrayList<>();
+            int count = 0;
+            int firstIndex = -1;
+            while (matcher.find()) {
+                if (count == 0) {
+                    firstIndex = matcher.start();
+                }
+                count++;
+            }
+
+            int baseScore = 10; // Default: Critical (Requirements section)
+            String priorityLabel = "Critical";
+
+            if (niceToHaveIndex != -1 && firstIndex >= niceToHaveIndex) {
+                baseScore = 1;
+                priorityLabel = "Nice to have";
+            }
+
+            // Frequency boost
+            int totalScore = baseScore + (count * 2);
+
+            list.add(new SkillPriorityInfo(getSkillDisplayName(skill), totalScore, priorityLabel));
+        }
+
+        // Sort by totalScore descending
+        list.sort((a, b) -> Integer.compare(b.score, a.score));
+
+        for (SkillPriorityInfo info : list) {
+            prioritized.add(new ResumeResponse.PrioritizedSkill(info.name, info.priorityLabel));
+        }
+
+        return prioritized;
+    }
+
+    /**
+     * Main analysis method supporting optional Job Description matching and advanced checks.
+     */
+    public ResumeResponse analyze(String resumeText, String jobDescription, String selectedRole, List<String> atsWarnings, Long savedId) {
+        List<String> resumeSkills = extractSkills(resumeText);
+        List<GrammarIssue> grammarIssues = checkGrammar(resumeText);
+
+        List<String> structureSuggestions = checkResumeStructure(resumeText);
+        List<ResumeResponse.BulletFeedbackItem> bulletFeedback = checkBulletPoints(resumeText);
+
+        // Check if Job Description matching is selected (JD is provided)
+        if (jobDescription != null && !jobDescription.trim().isEmpty()) {
+            List<String> jdSkills = extractSkills(jobDescription);
+            List<String> matchedSkills = new ArrayList<>();
+            List<String> missingSkills = new ArrayList<>();
+
+            for (String jdSkill : jdSkills) {
+                if (resumeSkills.contains(jdSkill)) {
+                    matchedSkills.add(jdSkill);
+                } else {
+                    missingSkills.add(jdSkill);
+                }
+            }
+
+            int score = jdSkills.isEmpty() ? 0 : (matchedSkills.size() * 100) / jdSkills.size();
+            String feedback;
+            if (score == 100) {
+                feedback = "Excellent match! Your resume contains all the skills required by the job description.";
+            } else if (score >= 70) {
+                feedback = "Strong match. You have most of the skills required. Consider brushing up on: " + String.join(", ", missingSkills);
+            } else if (score >= 40) {
+                feedback = "Moderate match. Focus on learning the missing skills: " + String.join(", ", missingSkills);
+            } else {
+                feedback = "Weak match. You are missing core requirements: " + String.join(", ", missingSkills);
+            }
+
+            List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(missingSkills, jobDescription);
+
+            return new ResumeResponse(
+                formatSkills(resumeSkills),
+                new ArrayList<>(), // Empty role ranking in JD mode
+                feedback,
+                true, // jdMatchMode
+                formatSkills(jdSkills),
+                formatSkills(matchedSkills),
+                formatSkills(missingSkills),
+                score,
+                grammarIssues,
+                savedId,
+                structureSuggestions,
+                bulletFeedback,
+                atsWarnings,
+                missingPrioritized
+            );
+        }
+
+        // Fallback: Predefined Role-List Matching
+        List<RoleMatchResponse> roleRanking = new ArrayList<>();
+        List<Role> matchedRoles = new ArrayList<>();
         int bestScore = -1;
+        String bestRoleName = "No strong role match";
 
-        // Role skills
-        String roleSkills[][] = {
-            {"html","css","javascript","react","nodejs","mysql","git"},
-            {"java","springboot","sql","maven","git","hibernate","junit"},
-            {"python","sql","excel","pandas","matplotlib","seaborn","powerbi"},
-            {"java","kotlin","android","flutter","git","firebase","xml"},
-            {"excel","sql","powerpoint","tableau","business_analysis","communication","python"},
-            {"aws","azure","docker","kubernetes","terraform","linux","python"},
-            {"python","numpy","pandas","scikit-learn","tensorflow","matplotlib","jupyter"}
-        };
+        for (RoleMapping mapping : ROLE_MAPPINGS) {
+            String roleName = mapping.getRoleName();
+            String[] requiredSkills = mapping.getRequiredSkills().toArray(new String[0]);
 
-         ArrayList<Role> allRoles = new ArrayList<>();
-        
-
-        report.append("======================================\n");
-        report.append("        RESUME INSIGHT REPORT\n");
-        report.append("======================================\n\n");
-
-        // Loop through roles
-            for(int i=0; i<roles.length; i++) {
-
-                if(selectedRole != null && !selectedRole.isEmpty() && !roles[i].equals(selectedRole)) {
+            if (selectedRole != null && !selectedRole.isEmpty() && !selectedRole.equals("all") && !roleName.equalsIgnoreCase(selectedRole)) {
                 continue;
+            }
+
+            List<String> matched = new ArrayList<>();
+            List<String> missing = new ArrayList<>();
+
+            for (String req : requiredSkills) {
+                if (resumeSkills.contains(req)) {
+                    matched.add(req);
+                } else {
+                    missing.add(req);
+                }
+            }
+
+            int score = requiredSkills.length == 0 ? 0 : (matched.size() * 100) / requiredSkills.length;
+            Role role = new Role(roleName, requiredSkills);
+            role.score = score;
+            role.missingSkills = missing.toArray(new String[0]);
+            role.level = getLevel(score);
+            role.feedback = getFeedback(score, roleName, role.missingSkills);
+            
+            matchedRoles.add(role);
+            roleRanking.add(new RoleMatchResponse(roleName, score));
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestRoleName = roleName;
+            }
         }
 
-            Role role = new Role(roles[i], roleSkills[i]);
+        // Sort role rankings by score descending
+        roleRanking.sort((r1, r2) -> Integer.compare(r2.getScore(), r1.getScore()));
 
-            int matchCount = 0;
+        String recommendationText = "Best Role: " + bestRoleName + " (" + (bestScore >= 0 ? bestScore + "%" : "0%") + ")";
+        if (bestScore < 40) {
+            recommendationText = "No strong role match detected (" + (bestScore >= 0 ? bestScore + "%" : "0%") + "). Try adding more domain-specific skills.";
+        }
 
-            // Count matched skills
-            for(int j=0; j<role.requiredSkills.length; j++) {
-                for(int x=0; x<k; x++) {
-                    if(role.requiredSkills[j].equals(uniqueDetected[x])) {
-                        matchCount++;
-                        break;
-                    }
+        List<String> matchedSkills = new ArrayList<>();
+        List<String> missingSkills = new ArrayList<>();
+        if (!matchedRoles.isEmpty()) {
+            matchedRoles.sort((r1, r2) -> Integer.compare(r2.score, r1.score));
+            Role bestRole = matchedRoles.get(0);
+            for (String req : bestRole.requiredSkills) {
+                if (resumeSkills.contains(req)) {
+                    matchedSkills.add(req);
+                } else {
+                    missingSkills.add(req);
                 }
             }
+        }
 
-            role.matchCount = matchCount;
+        List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(missingSkills, null);
 
-            // Calculate score
-            role.score = (matchCount * 100) / role.requiredSkills.length;
-
-            // Find missing skills
-            String missingTemp[] = new String[role.requiredSkills.length];
-            int m = 0;
-
-            for(int j=0; j<role.requiredSkills.length; j++) {
-                boolean found = false;
-
-                for(int x=0; x<k; x++) {
-                    if(role.requiredSkills[j].equals(uniqueDetected[x])) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if(!found) {
-                    missingTemp[m] = role.requiredSkills[j];
-                    m++;
-                }
-            }
-
-            // Exact size array
-            role.missingSkills = new String[m];
-            for(int j=0; j<m; j++) {
-                role.missingSkills[j] = missingTemp[j];
-            }
-
-            // Level and feedback
-            role.level = getLevel(role.score);
-            role.feedback = getFeedback(role.score, role.roleName, role.missingSkills);
-
-            if (role.score > bestScore) {
-                 bestScore = role.score;
-                 bestRoles.clear();
-                 bestRoles.add(role);
-           }
-               else if (role.score == bestScore) {
-              bestRoles.add(role);
-       }
-
-            // Output
-           report.append("Role: ").append(role.roleName).append("\n");
-           report.append("Score: ").append(role.score).append("%\n");
-           report.append("Level: ").append(role.level).append("\n\n");
-
-          report.append("Matched Skills: ").append(role.matchCount).append("\n");
-
-          if(m > 0) {
-                        report.append("Missing Skills: ")
-                       .append(String.join(", ", role.missingSkills))
-                       .append("\n");
-} else {
-      report.append("All skills matched!\n");
-}
-
-                  report.append("\nFeedback:\n");
-                  report.append(role.feedback).append("\n");
-                  report.append("\n--------------------------------------\n\n");
-
-         //keep track of best role
-        allRoles.add(role);
+        return new ResumeResponse(
+            formatSkills(resumeSkills),
+            roleRanking,
+            recommendationText,
+            false, // jdMatchMode
+            new ArrayList<>(), // jdSkills
+            formatSkills(matchedSkills),
+            formatSkills(missingSkills),
+            bestScore >= 0 ? bestScore : 0,
+            grammarIssues,
+            savedId,
+            structureSuggestions,
+            bulletFeedback,
+            atsWarnings,
+            missingPrioritized
+        );
     }
-        // ===== DAY 14: ROLE RANKING =====
 
-        for(int i = 0; i < allRoles.size(); i++) {
-            for(int j = i + 1; j < allRoles.size(); j++) {
-
-                if(allRoles.get(j).score > allRoles.get(i).score) {
-
-                Role temp = allRoles.get(i);
-                allRoles.set(i, allRoles.get(j));
-                allRoles.set(j, temp);
-        }
+    public ResumeResponse analyze(String resumeText, String jobDescription, String selectedRole, Long savedId) {
+        return analyze(resumeText, jobDescription, selectedRole, null, savedId);
     }
-}
 
-    report.append("\n======================================\n");
-    report.append("        ROLE RANKING (TOP MATCHES)\n");
-    report.append("======================================\n");
-
-    for(int i = 0; i < allRoles.size(); i++) {
-        Role r = allRoles.get(i);
-
-        report.append(i + 1)
-              .append(". ")
-              .append(r.roleName)
-              .append(" - ")
-              .append(r.score)
-              .append("%\n");
-
-    roleRanking.add(
-        new RoleMatchResponse(
-            r.roleName,
-            r.score
-        )
-    );
-}
-
-      report.append("\n======================================\n");
-      report.append("    BEST ROLE RECOMMENDATION\n");
-      report.append("======================================\n");
-
-if(bestScore < 40) {
-    bestRoleRecommendation = "No strong role match detected. Try adding more domain-specific skills.";
-
-    report.append(bestRoleRecommendation).append("\n");
-}
-else {
-    for(int i = 0; i < bestRoles.size(); i++) {
-        Role r = bestRoles.get(i);
-
-        report.append(i + 1)
-              .append(". ")
-              .append(r.roleName)
-              .append(" - ")
-              .append(r.score)
-              .append("%\n");
-
-        bestRoleRecommendation += r.roleName + " - " + r.score + "%\n";
-    }
-}
-       return new ResumeResponse(
-        Arrays.asList(resume.detectedSkills),
-        roleRanking,
-        bestRoleRecommendation.trim()
-    );
-}
-
-    public String[] removeDuplicates(String detected[]) {
-        String uniqueDetected[] = new String[detected.length];
-        int k = 0;
-
-        for(int i=0; i<detected.length; i++) {
-            boolean found = false;
-
-            for(int j=0; j<k; j++) {
-                if(detected[i].equals(uniqueDetected[j])) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if(!found) {
-                uniqueDetected[k] = detected[i];
-                k++;
-            }
-        }
-
-        String result[] = new String[k];
-        for(int i=0; i<k; i++) {
-            result[i] = uniqueDetected[i];
-        }
-
-        return result;
+    public ResumeResponse analyze(Resume resume, String selectedRole) {
+        return analyze(resume.text, null, selectedRole, null, null);
     }
 }

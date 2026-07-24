@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Insight Analyzer</title>
+    <!-- Google Fonts: Space Grotesk for headings, Inter for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css?v=2.1">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="app-nav">
+        <div class="nav-container">
+            <span class="nav-brand">Resume Insight Analyzer</span>
+            <div class="nav-actions">
+                <button class="btn-text" onclick="toggleHistorySidebar()">View History</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Grid -->
+    <main class="dashboard-grid">
+        
+        <!-- Left Column: Input Form -->
+        <section class="card form-section">
+            <h2 class="section-title">Analysis Inputs</h2>
+            
+            <!-- File Upload Drag & Drop -->
+            <div class="input-group">
+                <label class="input-label">Upload Resume (PDF, DOCX, or DOC)</label>
+                <div id="dropZone" class="upload-zone">
+                    <p class="upload-text">Drag and drop your PDF, DOCX, or DOC resume here, or <span class="upload-link">browse files</span></p>
+                    <input type="file" id="fileInput" accept=".pdf,.docx,.doc" class="hidden-file-input">
+                    <p id="fileStatus" class="file-status-text"></p>
+                </div>
+            </div>
+
+            <!-- Collapsible Paste Text Section -->
+            <div class="collapsible-section">
+                <button id="togglePasteBtn" class="collapsible-trigger" onclick="togglePasteSection()">
+                    <span>Or paste your resume text instead</span>
+                    <span id="toggleArrow" class="toggle-arrow">&#9662;</span>
+                </button>
+                <div id="pasteSectionContent" class="collapsible-content hidden">
+                    <div class="input-group">
+                        <textarea id="resumeText" class="form-textarea" placeholder="Paste resume text details here..."></textarea>
+                        <p id="charCount" class="char-counter">0 characters</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Mode -->
+            <div class="input-group">
+                <label class="input-label">Analysis Mode</label>
+                <select id="analysisMode" class="form-select">
+                    <option value="jd">Compare with Job Description</option>
+                    <option value="role">Match with Target Job Role</option>
+                </select>
+            </div>
+
+            <!-- Predefined Job Roles (Hidden by default) -->
+            <div id="roleDropdownGroup" class="input-group hidden">
+                <label class="input-label">Target Job Role</label>
+                <select id="roleDropdown" class="form-select">
+                    <option value="all">Analyze All Roles</option>
+                </select>
+            </div>
+
+            <!-- Job Description Text Area -->
+            <div id="jdGroup" class="input-group">
+                <label class="input-label">Job Description</label>
+                <textarea id="jobDescriptionText" class="form-textarea" placeholder="Paste job description details here to compare against..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-group">
+                <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeResume()">Analyze Resume</button>
+                <button class="btn btn-secondary" onclick="clearInputs()">Clear</button>
+            </div>
+        </section>
+
+        <!-- Right Column: Results Visualization -->
+        <section class="results-section">
+            
+            <!-- Analysis Loader -->
+            <div id="loader" class="card loader-card hidden">
+                <div class="spinner"></div>
+                <p class="loader-text">Analyzing skills and checking grammar...</p>
+            </div>
+
+            <!-- Placeholder State -->
+            <div id="resultPlaceholder" class="card placeholder-card">
+                <h3 class="placeholder-title">No Analysis Results</h3>
+                <p class="placeholder-text">Input your resume details and run the analyzer to visualize matched credentials, job gaps, and grammar suggestions.</p>
+            </div>
+
+            <!-- Active Results Dashboard -->
+            <div id="resultsDashboard" class="hidden">
+                
+                <!-- Score & Visual Chart -->
+                <div class="card score-card">
+                    <h2 class="section-title">Matching Index</h2>
+                    <div class="score-display-row">
+                        <div class="score-numeric">
+                            <span id="scoreNumber" class="score-big-value">0%</span>
+                            <span class="score-lbl">Overall Match</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="scoreChart"></canvas>
+                        </div>
+                    </div>
+                    <p id="recommendationText" class="feedback-summary"></p>
+                </div>
+
+                <!-- Skills Alignment Tag Clouds -->
+                <div class="card skills-alignment-card">
+                    <h2 class="section-title">Skills Overview</h2>
+                    
+                    <div class="skills-split-grid">
+                        <div class="skills-block">
+                            <h3 class="skills-sub-title matched-title">Matched Skills</h3>
+                            <div id="matchedSkillsList" class="skills-container">
+                                <!-- Matched tags -->
+                            </div>
+                        </div>
+                        <div class="skills-block">
+                            <h3 class="skills-sub-title missing-title">Missing Skills</h3>
+                            <div id="missingSkillsList" class="skills-container">
+                                <!-- Missing tags -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Predefined Roles Ranking (Only visible in Role Mode) -->
+                <div id="rolesLeaderboardCard" class="card hidden">
+                    <h2 class="section-title">Predefined Roles Matching</h2>
+                    <div id="leaderboardList" class="leaderboard-container">
+                        <!-- Role bars -->
+                    </div>
+                </div>
+
+                <!-- Opt-in AI Learning Roadmap -->
+                <div class="card roadmap-card">
+                    <h2 class="section-title">Personalized Development Roadmap</h2>
+                    <p class="card-desc">Generate a custom 3-month roadmap based on your skill gaps. (Requires active Internet connection)</p>
+                    
+                    <div id="roadmapTriggerArea">
+                        <button id="roadmapBtn" class="btn btn-outline" onclick="getAIRoadmap()">Get AI Roadmap</button>
+                    </div>
+                    <div id="roadmapLoading" class="loader-text-small hidden">
+                        <span class="pulse-dot"></span> Generating study plan via Gemini...
+                    </div>
+                    <div id="roadmapDisplay" class="roadmap-content hidden">
+                        <!-- Markdown text injected here -->
+                    </div>
+                </div>
+
+                <!-- Resume Health Check Card -->
+                <div id="healthCheckCard" class="card health-card hidden">
+                    <h2 class="section-title">Resume Health Check</h2>
+                    
+                    <!-- Structure / Sections -->
+                    <div class="health-subsection">
+                        <h3 class="health-sub-title">Structure & Expected Sections</h3>
+                        <ul id="structureList" class="health-list">
+                            <!-- Injected section suggestions -->
+                        </ul>
+                    </div>
+
+                    <!-- Bullet Point Feedback -->
+                    <div class="health-subsection">
+                        <h3 class="health-sub-title">Bullet Point Feedback</h3>
+                        <ul id="bulletFeedbackList" class="health-list">
+                            <!-- Injected bullet suggestions -->
+                        </ul>
+                    </div>
+
+                    <!-- ATS Friendliness Check -->
+                    <div class="health-subsection">
+                        <h3 class="health-sub-title">ATS Friendliness Check (PDFs)</h3>
+                        <div id="atsStatus" class="ats-status-container">
+                            <!-- Injected ATS warnings -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grammar Issues Card -->
+                <div class="card grammar-card">
+                    <h2 class="section-title">Spelling & Grammar Errors</h2>
+                    <div id="grammarList" class="grammar-container">
+                        <!-- List of errors -->
+                    </div>
+                </div>
+
+                <!-- PDF Report Download Trigger -->
+                <div class="report-download-row">
+                    <button class="btn btn-primary" onclick="downloadPdfReport()">Download Report as PDF</button>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Side Panel: Past History Logs -->
+    <aside id="historySidebar" class="history-sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Analysis History</span>
+            <button id="clearHistoryBtn" class="btn btn-outline" style="margin-left: auto; margin-right: 12px; padding: 4px 8px; font-size: 11px; border-color: #EF4444; color: #EF4444;" onclick="clearSessionHistory()">Clear History</button>
+            <button class="btn-close" onclick="toggleHistorySidebar()">Close</button>
+        </div>
+        <div class="sidebar-content" style="padding: 0; overflow-y: auto; height: calc(100% - 60px);">
+            <!-- Score Trend Chart Container -->
+            <div id="historyChartContainer" class="history-chart-card hidden" style="margin: 16px; padding: 16px; background-color: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 8px;">
+                <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 11px; text-transform: uppercase; color: #4A5568; letter-spacing: 0.5px; font-family: 'Space Grotesk', sans-serif;">Score Trend over Time</h4>
+                <div style="height: 150px; position: relative; width: 100%;">
+                    <canvas id="historyTrendChart"></canvas>
+                </div>
+            </div>
+            <div id="historyList">
+                <!-- Loaded list -->
+            </div>
+        </div>
+    </aside>
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleHistorySidebar()"></div>
+
+    <footer class="app-footer">
+        <p>Resume Insight Analyzer &bull; Portfolio Upgrade Edition</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

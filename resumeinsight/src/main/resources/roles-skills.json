@@ -1,0 +1,106 @@
+[
+  {
+    "roleName": "Web Developer",
+    "requiredSkills": ["html", "css", "javascript", "react", "nodejs", "mysql", "git"]
+  },
+  {
+    "roleName": "Java Developer",
+    "requiredSkills": ["java", "springboot", "sql", "maven", "git", "hibernate", "junit"]
+  },
+  {
+    "roleName": "Data Analyst",
+    "requiredSkills": ["python", "sql", "excel", "pandas", "matplotlib", "seaborn", "powerbi"]
+  },
+  {
+    "roleName": "Mobile App Developer",
+    "requiredSkills": ["java", "kotlin", "android", "flutter", "git", "firebase", "xml"]
+  },
+  {
+    "roleName": "Business Analyst",
+    "requiredSkills": ["excel", "sql", "powerpoint", "tableau", "business_analysis", "communication", "python"]
+  },
+  {
+    "roleName": "Cloud Engineer",
+    "requiredSkills": ["aws", "azure", "docker", "kubernetes", "terraform", "linux", "python"]
+  },
+  {
+    "roleName": "ML Engineer",
+    "requiredSkills": ["python", "numpy", "pandas", "scikit-learn", "tensorflow", "matplotlib", "jupyter"]
+  },
+  {
+    "roleName": "Frontend Developer",
+    "requiredSkills": ["html", "css", "javascript", "react", "git", "communication"]
+  },
+  {
+    "roleName": "Backend Developer",
+    "requiredSkills": ["java", "springboot", "sql", "mysql", "git", "hibernate", "junit"]
+  },
+  {
+    "roleName": "Full Stack Developer",
+    "requiredSkills": ["html", "css", "javascript", "react", "nodejs", "mysql", "git", "java", "springboot"]
+  },
+  {
+    "roleName": "Data Scientist",
+    "requiredSkills": ["python", "numpy", "pandas", "scikit-learn", "matplotlib", "jupyter", "sql"]
+  },
+  {
+    "roleName": "DevOps Engineer",
+    "requiredSkills": ["aws", "azure", "docker", "kubernetes", "terraform", "linux", "git", "springboot"]
+  },
+  {
+    "roleName": "Android Developer",
+    "requiredSkills": ["java", "kotlin", "android", "git", "firebase", "xml"]
+  },
+  {
+    "roleName": "iOS Developer",
+    "requiredSkills": ["flutter", "git", "firebase", "communication"]
+  },
+  {
+    "roleName": "Database Administrator",
+    "requiredSkills": ["sql", "mysql", "linux", "git"]
+  },
+  {
+    "roleName": "QA Engineer",
+    "requiredSkills": ["java", "junit", "git", "communication"]
+  },
+  {
+    "roleName": "Software Engineer in Test (SDET)",
+    "requiredSkills": ["java", "junit", "springboot", "git", "python", "mysql"]
+  },
+  {
+    "roleName": "Data Engineer",
+    "requiredSkills": ["python", "sql", "mysql", "aws", "git", "pandas"]
+  },
+  {
+    "roleName": "MLOps Engineer",
+    "requiredSkills": ["python", "docker", "kubernetes", "terraform", "linux", "git", "scikit-learn"]
+  },
+  {
+    "roleName": "Security Engineer",
+    "requiredSkills": ["linux", "aws", "communication", "git"]
+  },
+  {
+    "roleName": "Product Manager",
+    "requiredSkills": ["communication", "excel", "powerpoint", "business_analysis"]
+  },
+  {
+    "roleName": "Project Manager",
+    "requiredSkills": ["communication", "excel", "powerpoint", "business_analysis"]
+  },
+  {
+    "roleName": "UI/UX Designer",
+    "requiredSkills": ["html", "css", "communication"]
+  },
+  {
+    "roleName": "Technical Support Engineer",
+    "requiredSkills": ["linux", "communication", "sql", "mysql"]
+  },
+  {
+    "roleName": "Site Reliability Engineer (SRE)",
+    "requiredSkills": ["linux", "docker", "kubernetes", "aws", "terraform", "git", "python"]
+  },
+  {
+    "roleName": "System Administrator",
+    "requiredSkills": ["linux", "docker", "git", "aws", "azure"]
+  }
+]
