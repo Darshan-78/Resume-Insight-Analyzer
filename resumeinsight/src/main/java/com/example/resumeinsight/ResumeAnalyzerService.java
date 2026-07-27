@@ -17,10 +17,16 @@ public class ResumeAnalyzerService {
         "java", "springboot", "sql", "maven", "hibernate", "junit",
         "python", "excel", "pandas", "matplotlib", "seaborn", "powerbi",
         "kotlin", "android", "flutter", "firebase", "xml",
-        "powerpoint", "tableau", "business_analysis", "communication",
+        "powerpoint", "tableau", "business_analysis",
         "aws", "azure", "docker", "kubernetes", "terraform", "linux",
         "numpy", "scikit-learn", "tensorflow", "jupyter"
     };
+
+    public static final List<String> SOFT_SKILLS_KEYS = Arrays.asList(
+        "communication", "teamwork_collaboration", "problem_solving", "leadership",
+        "time_management", "adaptability", "attention_to_detail", "critical_thinking",
+        "work_ethic", "ownership_accountability"
+    );
 
     public static final Map<String, String> SKILL_DISPLAY_NAMES = new HashMap<>();
     static {
@@ -62,6 +68,44 @@ public class ResumeAnalyzerService {
         SKILL_DISPLAY_NAMES.put("scikit-learn", "Scikit-Learn");
         SKILL_DISPLAY_NAMES.put("tensorflow", "TensorFlow");
         SKILL_DISPLAY_NAMES.put("jupyter", "Jupyter");
+
+        // Soft skills mapping
+        SKILL_DISPLAY_NAMES.put("teamwork_collaboration", "Teamwork/Collaboration");
+        SKILL_DISPLAY_NAMES.put("problem_solving", "Problem-solving");
+        SKILL_DISPLAY_NAMES.put("leadership", "Leadership");
+        SKILL_DISPLAY_NAMES.put("time_management", "Time Management");
+        SKILL_DISPLAY_NAMES.put("adaptability", "Adaptability");
+        SKILL_DISPLAY_NAMES.put("attention_to_detail", "Attention to Detail");
+        SKILL_DISPLAY_NAMES.put("critical_thinking", "Critical Thinking");
+        SKILL_DISPLAY_NAMES.put("work_ethic", "Work Ethic");
+        SKILL_DISPLAY_NAMES.put("ownership_accountability", "Ownership/Accountability");
+    }
+
+    private static final Map<String, Pattern> SOFT_SKILL_PATTERNS = new LinkedHashMap<>();
+    static {
+        SOFT_SKILL_PATTERNS.put("communication", Pattern.compile("\\b(communication(\\s+skills)?|verbal\\s+and\\s+written\\s+communication)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("teamwork_collaboration", Pattern.compile("\\b(teamwork|collaboration|collaborative|team\\s+player|cross[-\\s_]functional\\s+collaboration)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("problem_solving", Pattern.compile("\\b(problem[-\\s_]solving(\\s+skills)?|analytical\\s+thinking)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("leadership", Pattern.compile("\\b(leadership)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("time_management", Pattern.compile("\\b(time[-\\s_]management)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("adaptability", Pattern.compile("\\b(adaptability|adaptable)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("attention_to_detail", Pattern.compile("\\b(attention\\s+to\\s+detail)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("critical_thinking", Pattern.compile("\\b(critical\\s+thinking)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("work_ethic", Pattern.compile("\\b(work\\s+ethic)\\b", Pattern.CASE_INSENSITIVE));
+        SOFT_SKILL_PATTERNS.put("ownership_accountability", Pattern.compile("\\b(ownership|accountability|accountable)\\b", Pattern.CASE_INSENSITIVE));
+    }
+
+    public List<String> extractSoftSkills(String text) {
+        List<String> detected = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return detected;
+        }
+        for (Map.Entry<String, Pattern> entry : SOFT_SKILL_PATTERNS.entrySet()) {
+            if (entry.getValue().matcher(text).find()) {
+                detected.add(entry.getKey());
+            }
+        }
+        return detected;
     }
 
     public static String getSkillDisplayName(String skill) {
@@ -507,6 +551,7 @@ public class ResumeAnalyzerService {
      */
     public ResumeResponse analyze(String resumeText, String jobDescription, String selectedRole, List<String> atsWarnings, Long savedId) {
         List<String> resumeSkills = extractSkills(resumeText);
+        List<String> resumeSoftSkills = extractSoftSkills(resumeText);
         List<GrammarIssue> grammarIssues = checkGrammar(resumeText);
 
         List<String> structureSuggestions = checkResumeStructure(resumeText);
@@ -514,47 +559,78 @@ public class ResumeAnalyzerService {
 
         // Check if Job Description matching is selected (JD is provided)
         if (jobDescription != null && !jobDescription.trim().isEmpty()) {
-            List<String> jdSkills = extractSkills(jobDescription);
-            List<String> matchedSkills = new ArrayList<>();
-            List<String> missingSkills = new ArrayList<>();
+            List<String> jdTechSkills = extractSkills(jobDescription);
+            List<String> jdSoftSkills = extractSoftSkills(jobDescription);
 
-            for (String jdSkill : jdSkills) {
+            List<String> matchedTechSkills = new ArrayList<>();
+            List<String> missingTechSkills = new ArrayList<>();
+            for (String jdSkill : jdTechSkills) {
                 if (resumeSkills.contains(jdSkill)) {
-                    matchedSkills.add(jdSkill);
+                    matchedTechSkills.add(jdSkill);
                 } else {
-                    missingSkills.add(jdSkill);
+                    missingTechSkills.add(jdSkill);
                 }
             }
 
-            int score = jdSkills.isEmpty() ? 0 : (matchedSkills.size() * 100) / jdSkills.size();
-            String feedback;
-            if (score == 100) {
-                feedback = "Excellent match! Your resume contains all the skills required by the job description.";
-            } else if (score >= 70) {
-                feedback = "Strong match. You have most of the skills required. Consider brushing up on: " + String.join(", ", missingSkills);
-            } else if (score >= 40) {
-                feedback = "Moderate match. Focus on learning the missing skills: " + String.join(", ", missingSkills);
-            } else {
-                feedback = "Weak match. You are missing core requirements: " + String.join(", ", missingSkills);
+            List<String> matchedSoftSkills = new ArrayList<>();
+            List<String> missingSoftSkills = new ArrayList<>();
+            for (String jdSoft : jdSoftSkills) {
+                if (resumeSoftSkills.contains(jdSoft)) {
+                    matchedSoftSkills.add(jdSoft);
+                } else {
+                    missingSoftSkills.add(jdSoft);
+                }
             }
 
-            List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(missingSkills, jobDescription);
+            int totalRequired = jdTechSkills.size() + jdSoftSkills.size();
+            int totalMatched = matchedTechSkills.size() + matchedSoftSkills.size();
+            int score = totalRequired == 0 ? 0 : (totalMatched * 100) / totalRequired;
+
+            StringBuilder feedbackSb = new StringBuilder();
+            if (score == 100) {
+                feedbackSb.append("Excellent match! Your resume contains all the skills required by the job description.");
+            } else {
+                if (score >= 70) {
+                    feedbackSb.append("Strong match. You have most of the skills required.");
+                } else if (score >= 40) {
+                    feedbackSb.append("Moderate match. Focus on developing your missing skills.");
+                } else {
+                    feedbackSb.append("Weak match. You are missing core requirements.");
+                }
+
+                if (!missingTechSkills.isEmpty()) {
+                    feedbackSb.append(" Consider learning or brushing up on technical skills: ").append(String.join(", ", formatSkills(missingTechSkills))).append(".");
+                }
+                if (!missingSoftSkills.isEmpty()) {
+                    feedbackSb.append(" For soft skills like ").append(String.join(", ", formatSkills(missingSoftSkills)))
+                              .append(", consider adding specific examples in your resume that demonstrate them (e.g. presenting results or teamwork).");
+                }
+            }
+            String feedback = feedbackSb.toString();
+
+            List<String> allMissing = new ArrayList<>();
+            allMissing.addAll(missingTechSkills);
+            allMissing.addAll(missingSoftSkills);
+            List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(allMissing, jobDescription);
 
             return new ResumeResponse(
                 formatSkills(resumeSkills),
                 new ArrayList<>(), // Empty role ranking in JD mode
                 feedback,
                 true, // jdMatchMode
-                formatSkills(jdSkills),
-                formatSkills(matchedSkills),
-                formatSkills(missingSkills),
+                formatSkills(jdTechSkills),
+                formatSkills(matchedTechSkills),
+                formatSkills(missingTechSkills),
                 score,
                 grammarIssues,
                 savedId,
                 structureSuggestions,
                 bulletFeedback,
                 atsWarnings,
-                missingPrioritized
+                missingPrioritized,
+                formatSkills(resumeSoftSkills),
+                formatSkills(matchedSoftSkills),
+                formatSkills(missingSoftSkills)
             );
         }
 
@@ -572,24 +648,39 @@ public class ResumeAnalyzerService {
                 continue;
             }
 
-            List<String> matched = new ArrayList<>();
-            List<String> missing = new ArrayList<>();
+            List<String> matchedTech = new ArrayList<>();
+            List<String> missingTech = new ArrayList<>();
+            List<String> matchedSoft = new ArrayList<>();
+            List<String> missingSoft = new ArrayList<>();
 
             for (String req : requiredSkills) {
-                if (resumeSkills.contains(req)) {
-                    matched.add(req);
+                if (SOFT_SKILLS_KEYS.contains(req)) {
+                    if (resumeSoftSkills.contains(req)) {
+                        matchedSoft.add(req);
+                    } else {
+                        missingSoft.add(req);
+                    }
                 } else {
-                    missing.add(req);
+                    if (resumeSkills.contains(req)) {
+                        matchedTech.add(req);
+                    } else {
+                        missingTech.add(req);
+                    }
                 }
             }
 
-            int score = requiredSkills.length == 0 ? 0 : (matched.size() * 100) / requiredSkills.length;
+            int score = requiredSkills.length == 0 ? 0 : ((matchedTech.size() + matchedSoft.size()) * 100) / requiredSkills.length;
             Role role = new Role(roleName, requiredSkills);
             role.score = score;
-            role.missingSkills = missing.toArray(new String[0]);
+
+            List<String> allMissing = new ArrayList<>();
+            allMissing.addAll(missingTech);
+            allMissing.addAll(missingSoft);
+            role.missingSkills = allMissing.toArray(new String[0]);
+
             role.level = getLevel(score);
             role.feedback = getFeedback(score, roleName, role.missingSkills);
-            
+
             matchedRoles.add(role);
             roleRanking.add(new RoleMatchResponse(roleName, score));
 
@@ -609,19 +700,32 @@ public class ResumeAnalyzerService {
 
         List<String> matchedSkills = new ArrayList<>();
         List<String> missingSkills = new ArrayList<>();
+        List<String> matchedSoftSkills = new ArrayList<>();
+        List<String> missingSoftSkills = new ArrayList<>();
         if (!matchedRoles.isEmpty()) {
             matchedRoles.sort((r1, r2) -> Integer.compare(r2.score, r1.score));
             Role bestRole = matchedRoles.get(0);
             for (String req : bestRole.requiredSkills) {
-                if (resumeSkills.contains(req)) {
-                    matchedSkills.add(req);
+                if (SOFT_SKILLS_KEYS.contains(req)) {
+                    if (resumeSoftSkills.contains(req)) {
+                        matchedSoftSkills.add(req);
+                    } else {
+                        missingSoftSkills.add(req);
+                    }
                 } else {
-                    missingSkills.add(req);
+                    if (resumeSkills.contains(req)) {
+                        matchedSkills.add(req);
+                    } else {
+                        missingSkills.add(req);
+                    }
                 }
             }
         }
 
-        List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(missingSkills, null);
+        List<String> allMissing = new ArrayList<>();
+        allMissing.addAll(missingSkills);
+        allMissing.addAll(missingSoftSkills);
+        List<ResumeResponse.PrioritizedSkill> missingPrioritized = prioritizeMissingSkills(allMissing, null);
 
         return new ResumeResponse(
             formatSkills(resumeSkills),
@@ -637,7 +741,10 @@ public class ResumeAnalyzerService {
             structureSuggestions,
             bulletFeedback,
             atsWarnings,
-            missingPrioritized
+            missingPrioritized,
+            formatSkills(resumeSoftSkills),
+            formatSkills(matchedSoftSkills),
+            formatSkills(missingSoftSkills)
         );
     }
 

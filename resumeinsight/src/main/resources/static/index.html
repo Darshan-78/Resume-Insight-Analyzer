@@ -7,10 +7,10 @@
     <!-- Google Fonts: Space Grotesk for headings, Inter for body -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=2.1">
+    <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body>
 
@@ -19,7 +19,17 @@
         <div class="nav-container">
             <span class="nav-brand">Resume Insight Analyzer</span>
             <div class="nav-actions">
-                <button class="btn-text" onclick="toggleHistorySidebar()">View History</button>
+                <button id="menuBtn" class="menu-btn" onclick="toggleMenu(event)" aria-label="Toggle Menu">☰</button>
+                <div id="menuDropdown" class="menu-dropdown hidden">
+                    <div class="menu-dropdown-header">
+                        <span class="menu-dropdown-title">Menu</span>
+                        <button class="menu-close-btn" onclick="toggleMenu(event)">&times;</button>
+                    </div>
+                    <ul class="menu-list">
+                        <li><a href="#" onclick="menuViewHistory(event)">View History</a></li>
+                        <li><a href="#" onclick="menuClearCache(event)">Clear Local Cache</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
@@ -36,6 +46,7 @@
                 <label class="input-label">Upload Resume (PDF, DOCX, or DOC)</label>
                 <div id="dropZone" class="upload-zone">
                     <p class="upload-text">Drag and drop your PDF, DOCX, or DOC resume here, or <span class="upload-link">browse files</span></p>
+                    <button type="button" id="mobileUploadBtn" class="btn btn-secondary mobile-only-btn" style="margin-top: 12px; display: none;">Tap to Browse Files</button>
                     <input type="file" id="fileInput" accept=".pdf,.docx,.doc" class="hidden-file-input">
                     <p id="fileStatus" class="file-status-text"></p>
                 </div>
@@ -83,10 +94,95 @@
                 <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeResume()">Analyze Resume</button>
                 <button class="btn btn-secondary" onclick="clearInputs()">Clear</button>
             </div>
+
+            <!-- Validation Message -->
+            <div id="validationMessage" class="validation-message hidden"></div>
+        </section>
+
+        <!-- Right Column: Initial Hero Section (Visible before analysis) -->
+        <section id="aiHeroSection" class="ai-hero-section">
+            <div class="hero-container">
+                <!-- Animated AI Resume Scanning Illustration -->
+                <div class="scanner-illustration">
+                    <div class="resume-wrapper">
+                        <!-- Floating Resume lines representing content -->
+                        <div class="resume-line title"></div>
+                        <div class="resume-line short"></div>
+                        <div class="resume-line long"></div>
+                        <div class="resume-line medium"></div>
+                        <div class="resume-line short"></div>
+                        <div class="resume-line long"></div>
+                        
+                        <!-- Small checkmarks appearing after scan -->
+                        <div class="checkmark-icon c1">✓</div>
+                        <div class="checkmark-icon c2">✓</div>
+                    </div>
+                    
+                    <!-- Scanning Beam and Glow -->
+                    <div class="scanning-beam"></div>
+                    <div class="glowing-scan-effect"></div>
+                    
+                    <!-- Floating Analytics & Chart elements -->
+                    <div class="floating-element chart-element">
+                        <svg viewBox="0 0 50 50" width="100%" height="100%">
+                            <circle class="circle-bg" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+                            <circle class="circle-fill" cx="25" cy="25" r="20" fill="none" stroke-width="4" stroke-dasharray="125" stroke-dashoffset="40"></circle>
+                        </svg>
+                    </div>
+                    <div class="floating-element search-element">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2.5"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2.5"></line>
+                        </svg>
+                    </div>
+                    <div class="floating-element analytics-element">
+                        <div class="bar bar-1"></div>
+                        <div class="bar bar-2"></div>
+                        <div class="bar bar-3"></div>
+                    </div>
+
+                    <!-- Soft Floating Particles -->
+                    <div class="particle p1"></div>
+                    <div class="particle p2"></div>
+                    <div class="particle p3"></div>
+                    <div class="particle p4"></div>
+                </div>
+
+                <!-- Rotating Taglines Display -->
+                <div class="rotating-taglines-container">
+                    <div class="tagline active" id="tagline-1">
+                        <h2>Upload your resume.</h2>
+                        <h2>Discover hidden strengths.</h2>
+                        <h2>Unlock better opportunities.</h2>
+                    </div>
+                    <div class="tagline" id="tagline-2">
+                        <h2>Every resume tells a story.</h2>
+                        <h2>We help you tell it better.</h2>
+                    </div>
+                    <div class="tagline" id="tagline-3">
+                        <h2>Analyze. Improve.</h2>
+                        <h2>Get interview-ready with AI-powered resume insights.</h2>
+                    </div>
+                </div>
+
+                <!-- Hero Subtitle -->
+                <p class="hero-subtitle">
+                    Get instant ATS insights, keyword analysis, skill gap detection, and personalized recommendations to strengthen your resume.
+                </p>
+
+                <!-- Feature Chips -->
+                <div class="feature-chips-container">
+                    <span class="feature-chip"><span class="chip-check">✓</span> ATS Analysis</span>
+                    <span class="feature-chip"><span class="chip-check">✓</span> Skill Detection</span>
+                    <span class="feature-chip"><span class="chip-check">✓</span> Keyword Matching</span>
+                    <span class="feature-chip"><span class="chip-check">✓</span> AI Suggestions</span>
+                    <span class="feature-chip"><span class="chip-check">✓</span> Resume Insights</span>
+                </div>
+            </div>
         </section>
 
         <!-- Right Column: Results Visualization -->
-        <section class="results-section">
+        <section id="resultsSectionWrapper" class="results-section hidden">
             
             <!-- Analysis Loader -->
             <div id="loader" class="card loader-card hidden">
@@ -103,105 +199,194 @@
             <!-- Active Results Dashboard -->
             <div id="resultsDashboard" class="hidden">
                 
-                <!-- Score & Visual Chart -->
-                <div class="card score-card">
-                    <h2 class="section-title">Matching Index</h2>
-                    <div class="score-display-row">
-                        <div class="score-numeric">
-                            <span id="scoreNumber" class="score-big-value">0%</span>
-                            <span class="score-lbl">Overall Match</span>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="scoreChart"></canvas>
-                        </div>
+                <!-- Top Score Highlight Card -->
+                <div class="card score-highlight-card">
+                    <div class="score-card-header">
+                        <h2 class="section-title text-center">Match Index</h2>
+                        <button class="btn btn-primary" onclick="downloadPdfReport()">Download Report as PDF</button>
                     </div>
-                    <p id="recommendationText" class="feedback-summary"></p>
+                    <div class="score-highlight-container">
+                        <div class="score-circular-wrapper">
+                            <svg class="score-ring" width="140" height="140">
+                                <defs>
+                                    <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#0D7377" />
+                                        <stop offset="100%" stop-color="#10B981" />
+                                    </linearGradient>
+                                </defs>
+                                <circle class="score-ring-bg" cx="70" cy="70" r="58" stroke-width="10" fill="transparent"></circle>
+                                <circle id="scoreRingFill" class="score-ring-fill" cx="70" cy="70" r="58" stroke-width="10" fill="transparent" stroke-dasharray="364.42" stroke-dashoffset="364.42"></circle>
+                            </svg>
+                            <div class="score-text-overlay">
+                                <span id="scoreNumber" class="score-big-value">0%</span>
+                            </div>
+                        </div>
+                        <div class="best-role-label">Best Matched Role</div>
+                        <p id="recommendationText" class="feedback-summary text-center"></p>
+                    </div>
                 </div>
 
-                <!-- Skills Alignment Tag Clouds -->
-                <div class="card skills-alignment-card">
-                    <h2 class="section-title">Skills Overview</h2>
+                <!-- Navigation Tabs -->
+                <div class="results-tabs">
+                    <button class="tab-btn active" onclick="switchResultTab('overview')">Overview</button>
+                    <button class="tab-btn" onclick="switchResultTab('skills')">Skills</button>
+                    <button class="tab-btn" onclick="switchResultTab('health')">Health Check</button>
+                    <button class="tab-btn" onclick="switchResultTab('grammar')">Grammar</button>
+                    <button class="tab-btn" onclick="switchResultTab('roadmap')">Roadmap</button>
+                </div>
+
+                <!-- Tab Content Wrapper -->
+                <div class="tab-content-container">
                     
-                    <div class="skills-split-grid">
-                        <div class="skills-block">
-                            <h3 class="skills-sub-title matched-title">Matched Skills</h3>
-                            <div id="matchedSkillsList" class="skills-container">
-                                <!-- Matched tags -->
-                            </div>
-                        </div>
-                        <div class="skills-block">
-                            <h3 class="skills-sub-title missing-title">Missing Skills</h3>
-                            <div id="missingSkillsList" class="skills-container">
-                                <!-- Missing tags -->
+                    <!-- Tab Content: Overview -->
+                    <div id="tab-overview" class="tab-pane">
+                        <div class="card overview-card">
+                            <h3 class="card-title">Analysis Overview</h3>
+                            <div class="overview-grid">
+                                <div class="overview-metric">
+                                    <span class="metric-label">Match Score</span>
+                                    <span id="overviewScore" class="metric-value">0%</span>
+                                </div>
+                                <div class="overview-metric">
+                                    <span class="metric-label">Recommended Role</span>
+                                    <span id="overviewRole" class="metric-value">-</span>
+                                </div>
+                                <div class="overview-metric">
+                                    <span class="metric-label">Matched Skills</span>
+                                    <span id="overviewMatchedCount" class="metric-value">0 Tech, 0 Soft</span>
+                                </div>
+                                <div class="overview-metric">
+                                    <span class="metric-label">Missing Skills</span>
+                                    <span id="overviewMissingCount" class="metric-value">0 Tech, 0 Soft</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Tab Content: Skills -->
+                    <div id="tab-skills" class="tab-pane hidden">
+                        <div class="results-grid skills-grid">
+                            <!-- Card 1: Technical Skills -->
+                            <div class="card grid-card technical-skills-card">
+                                <h3 class="card-title">Technical Skills</h3>
+                                <div class="skills-block">
+                                    <h4 class="skills-sub-title matched-title">Matched Technical Skills</h4>
+                                    <div id="matchedSkillsList" class="skills-container">
+                                        <!-- Matched tags -->
+                                    </div>
+                                </div>
+                                <div class="skills-block" style="margin-top: 16px;">
+                                    <h4 class="skills-sub-title missing-title">Missing Technical Skills</h4>
+                                    <div id="missingSkillsList" class="skills-container">
+                                        <!-- Missing tags -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Soft Skills -->
+                            <div class="card grid-card soft-skills-card">
+                                <h3 class="card-title">Soft Skills</h3>
+                                <div class="skills-block">
+                                    <h4 class="skills-sub-title matched-title">Matched Soft Skills</h4>
+                                    <div id="matchedSoftSkillsList" class="skills-container">
+                                        <!-- Matched tags -->
+                                    </div>
+                                </div>
+                                <div class="skills-block" style="margin-top: 16px;">
+                                    <h4 class="skills-sub-title missing-title">Missing Soft Skills</h4>
+                                    <div id="missingSoftSkillsList" class="skills-container">
+                                        <!-- Missing tags -->
+                                    </div>
+                                    <div id="softSkillsSuggestion" class="soft-skills-tip hidden">
+                                        <strong>Tip:</strong> Consider adding a specific example in your resume that demonstrates your missing soft skills.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Health Check -->
+                    <div id="tab-health" class="tab-pane hidden">
+                        <!-- Card 3: Resume Health Check -->
+                        <div id="healthCheckCard" class="card health-card">
+                            <h3 class="card-title">Resume Health Check</h3>
+                            
+                            <!-- Structure / Sections -->
+                            <div class="health-subsection">
+                                <h4 class="health-sub-title">Structure & Expected Sections</h4>
+                                <ul id="structureList" class="health-list">
+                                    <!-- Injected section suggestions -->
+                                </ul>
+                            </div>
+
+                            <!-- Bullet Point Feedback -->
+                            <div class="health-subsection">
+                                <h4 class="health-sub-title">Bullet Point Feedback</h4>
+                                <ul id="bulletFeedbackList" class="health-list">
+                                    <!-- Injected bullet suggestions -->
+                                </ul>
+                            </div>
+
+                            <!-- ATS Friendliness Check -->
+                            <div class="health-subsection" style="border-bottom: none; padding-bottom: 0;">
+                                <h4 class="health-sub-title">ATS Friendliness Check (PDFs)</h4>
+                                <div id="atsStatus" class="ats-status-container">
+                                    <!-- Injected ATS warnings -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Grammar -->
+                    <div id="tab-grammar" class="tab-pane hidden">
+                        <!-- Card 4: Grammar & Spelling -->
+                        <div class="card grammar-card">
+                            <div class="card-header-flex">
+                                <h3 class="card-title">Grammar & Spelling</h3>
+                                <button id="toggleGrammarBtn" class="btn btn-outline-small" onclick="toggleGrammarDetails()">Show details</button>
+                            </div>
+                            <div id="grammarContent" class="collapsible-wrapper hidden">
+                                <div id="grammarList" class="grammar-container" style="margin-top: 16px;">
+                                    <!-- List of errors -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Roadmap -->
+                    <div id="tab-roadmap" class="tab-pane hidden">
+                        <!-- AI Roadmap Section (Distinct Card styling, Collapsible) -->
+                        <div class="card roadmap-special-card" style="margin-top: 0;">
+                            <div class="card-header-flex">
+                                <div>
+                                    <h3 class="roadmap-special-title">Personalized Development Roadmap</h3>
+                                    <p class="roadmap-special-desc">Generate a custom 3-month roadmap based on your skill gaps.</p>
+                                </div>
+                                <button id="toggleRoadmapBtn" class="btn btn-outline-small hidden" onclick="toggleRoadmapDetails()">Show details</button>
+                            </div>
+                            
+                            <div id="roadmapTriggerArea" style="margin-top: 16px;">
+                                <button id="roadmapBtn" class="btn btn-primary" onclick="getAIRoadmap()">Get AI Roadmap</button>
+                            </div>
+                            <div id="roadmapLoading" class="loader-text-small hidden" style="margin-top: 16px;">
+                                <span class="pulse-dot"></span> Generating study plan via Gemini...
+                            </div>
+                            <div id="roadmapCollapsible" class="collapsible-wrapper hidden">
+                                <div id="roadmapDisplay" class="roadmap-special-content" style="margin-top: 16px;">
+                                    <!-- Markdown text injected here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Predefined Roles Ranking (Only visible in Role Mode) -->
-                <div id="rolesLeaderboardCard" class="card hidden">
-                    <h2 class="section-title">Predefined Roles Matching</h2>
-                    <div id="leaderboardList" class="leaderboard-container">
+                <!-- Predefined Roles Ranking (Only visible in Role Mode, Full Width) -->
+                <div id="rolesLeaderboardCard" class="card leaderboard-card hidden" style="margin-top: 24px;">
+                    <h3 class="card-title">Predefined Roles Matching</h3>
+                    <div id="leaderboardList" class="leaderboard-container" style="margin-top: 16px;">
                         <!-- Role bars -->
                     </div>
-                </div>
-
-                <!-- Opt-in AI Learning Roadmap -->
-                <div class="card roadmap-card">
-                    <h2 class="section-title">Personalized Development Roadmap</h2>
-                    <p class="card-desc">Generate a custom 3-month roadmap based on your skill gaps. (Requires active Internet connection)</p>
-                    
-                    <div id="roadmapTriggerArea">
-                        <button id="roadmapBtn" class="btn btn-outline" onclick="getAIRoadmap()">Get AI Roadmap</button>
-                    </div>
-                    <div id="roadmapLoading" class="loader-text-small hidden">
-                        <span class="pulse-dot"></span> Generating study plan via Gemini...
-                    </div>
-                    <div id="roadmapDisplay" class="roadmap-content hidden">
-                        <!-- Markdown text injected here -->
-                    </div>
-                </div>
-
-                <!-- Resume Health Check Card -->
-                <div id="healthCheckCard" class="card health-card hidden">
-                    <h2 class="section-title">Resume Health Check</h2>
-                    
-                    <!-- Structure / Sections -->
-                    <div class="health-subsection">
-                        <h3 class="health-sub-title">Structure & Expected Sections</h3>
-                        <ul id="structureList" class="health-list">
-                            <!-- Injected section suggestions -->
-                        </ul>
-                    </div>
-
-                    <!-- Bullet Point Feedback -->
-                    <div class="health-subsection">
-                        <h3 class="health-sub-title">Bullet Point Feedback</h3>
-                        <ul id="bulletFeedbackList" class="health-list">
-                            <!-- Injected bullet suggestions -->
-                        </ul>
-                    </div>
-
-                    <!-- ATS Friendliness Check -->
-                    <div class="health-subsection">
-                        <h3 class="health-sub-title">ATS Friendliness Check (PDFs)</h3>
-                        <div id="atsStatus" class="ats-status-container">
-                            <!-- Injected ATS warnings -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Grammar Issues Card -->
-                <div class="card grammar-card">
-                    <h2 class="section-title">Spelling & Grammar Errors</h2>
-                    <div id="grammarList" class="grammar-container">
-                        <!-- List of errors -->
-                    </div>
-                </div>
-
-                <!-- PDF Report Download Trigger -->
-                <div class="report-download-row">
-                    <button class="btn btn-primary" onclick="downloadPdfReport()">Download Report as PDF</button>
                 </div>
 
             </div>
@@ -235,6 +420,6 @@
         <p>Resume Insight Analyzer &bull; Portfolio Upgrade Edition</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=3.0"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ public class AnalysisHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(columnDefinition = "TEXT")
     private String filename;
 
     @Column(columnDefinition = "TEXT")
@@ -25,8 +26,18 @@ public class AnalysisHistory {
     @Column(columnDefinition = "TEXT")
     private String missingSkills; // Comma-separated
 
+    @Column(columnDefinition = "TEXT")
+    private String matchedSoftSkills; // Comma-separated
+
+    @Column(columnDefinition = "TEXT")
+    private String missingSoftSkills; // Comma-separated
+
+    @Column(columnDefinition = "TEXT")
+    private String atsWarnings; // Comma-separated (joined by ;)
+
     private int score;
 
+    @Column(columnDefinition = "TEXT")
     private String bestRole;
 
     @Column(columnDefinition = "TEXT")
@@ -37,6 +48,7 @@ public class AnalysisHistory {
 
     private LocalDateTime timestamp;
 
+    @Column(columnDefinition = "TEXT")
     private String sessionId;
 
     public AnalysisHistory() {}
@@ -135,5 +147,29 @@ public class AnalysisHistory {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getMatchedSoftSkills() {
+        return matchedSoftSkills;
+    }
+
+    public void setMatchedSoftSkills(String matchedSoftSkills) {
+        this.matchedSoftSkills = matchedSoftSkills;
+    }
+
+    public String getMissingSoftSkills() {
+        return missingSoftSkills;
+    }
+
+    public void setMissingSoftSkills(String missingSoftSkills) {
+        this.missingSoftSkills = missingSoftSkills;
+    }
+
+    public String getAtsWarnings() {
+        return atsWarnings;
+    }
+
+    public void setAtsWarnings(String atsWarnings) {
+        this.atsWarnings = atsWarnings;
     }
 }

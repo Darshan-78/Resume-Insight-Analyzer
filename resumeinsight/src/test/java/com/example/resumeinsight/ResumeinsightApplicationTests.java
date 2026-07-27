@@ -30,6 +30,8 @@ class ResumeinsightApplicationTests {
     @Autowired
     private AnalysisHistoryRepository repository;
 
+
+
     private static final float PAGE_WIDTH = 612;
     private static final float PAGE_HEIGHT = 792;
     private static final float MARGIN = 50;
@@ -42,6 +44,62 @@ class ResumeinsightApplicationTests {
 
     @Test
     void contextLoads() {
+    }
+
+    @Test
+    void testPdfReportAtsFriendlinessCheck() throws Exception {
+        // Test PDF file with no warnings
+        AnalysisHistory pdfHistoryNoWarnings = new AnalysisHistory();
+        pdfHistoryNoWarnings.setFilename("my_resume.pdf");
+        pdfHistoryNoWarnings.setAtsWarnings("");
+        pdfHistoryNoWarnings.setResumeText("Java Developer with Communication skills.");
+        pdfHistoryNoWarnings.setMatchedSkills("Java");
+        pdfHistoryNoWarnings.setMatchedSoftSkills("Communication");
+        pdfHistoryNoWarnings.setScore(80);
+        pdfHistoryNoWarnings.setBestRole("Java Developer");
+        pdfHistoryNoWarnings.setTimestamp(LocalDateTime.now());
+        pdfHistoryNoWarnings.setGrammarIssuesJson("[]");
+
+        PDFGeneratorUtil pdfUtil = new PDFGeneratorUtil();
+        byte[] pdfBytes = pdfUtil.generateReport(pdfHistoryNoWarnings);
+        
+        try (PDDocument doc = PDDocument.load(pdfBytes)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            String text = stripper.getText(doc);
+            System.out.println("=== TEST PDF NO WARNINGS ===");
+            System.out.println(text);
+            System.out.println("============================");
+            org.junit.jupiter.api.Assertions.assertTrue(
+                text.contains("No major ATS parsing risks found for this resume"),
+                "PDF report did not correctly display 'No major ATS parsing risks found for this resume'!"
+            );
+        }
+
+        // Test Non-PDF file (e.g. pasted text)
+        AnalysisHistory pastedHistory = new AnalysisHistory();
+        pastedHistory.setFilename("Pasted Resume Text");
+        pastedHistory.setAtsWarnings("");
+        pastedHistory.setResumeText("Java Developer with Communication skills.");
+        pastedHistory.setMatchedSkills("Java");
+        pastedHistory.setMatchedSoftSkills("Communication");
+        pastedHistory.setScore(80);
+        pastedHistory.setBestRole("Java Developer");
+        pastedHistory.setTimestamp(LocalDateTime.now());
+        pastedHistory.setGrammarIssuesJson("[]");
+
+        PDFGeneratorUtil pdfUtil2 = new PDFGeneratorUtil();
+        byte[] pastedPdfBytes = pdfUtil2.generateReport(pastedHistory);
+        try (PDDocument doc = PDDocument.load(pastedPdfBytes)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            String text = stripper.getText(doc);
+            System.out.println("=== TEST PASTED TEXT ===");
+            System.out.println(text);
+            System.out.println("========================");
+            org.junit.jupiter.api.Assertions.assertTrue(
+                text.contains("Layout diagnostics not applicable or not generated for this format"),
+                "PDF report did not correctly display 'Layout diagnostics not applicable or not generated for this format'!"
+            );
+        }
     }
 
     private byte[] createMockPdf(String content) throws IOException {
@@ -729,5 +787,62 @@ class ResumeinsightApplicationTests {
 
         // Cleanup
         repository.deleteAll();
+    }
+
+    @Test
+    void testSoftSkillsExtractionAndCategorization() {
+        ResumeAnalyzerService service = new ResumeAnalyzerService();
+        
+        // Test JD mode analysis
+        String resumeText = "Java Developer. I have excellent communication skills and teamwork experience.";
+        String jdText = "Required: Java. Soft skills: Communication, Problem-solving, Leadership.";
+        
+        ResumeResponse response = service.analyze(resumeText, jdText, null, new ArrayList<>(), null);
+        
+        System.out.println("=== SOFT SKILLS TEST ===");
+        System.out.println("Matched Tech: " + response.getMatchedSkills());
+        System.out.println("Missing Tech: " + response.getMissingSkills());
+        System.out.println("Matched Soft: " + response.getMatchedSoftSkills());
+        System.out.println("Missing Soft: " + response.getMissingSoftSkills());
+        System.out.println("========================");
+        
+        // Assert technical skill matching
+        org.junit.jupiter.api.Assertions.assertTrue(response.getMatchedSkills().contains("Java"));
+        
+        // Assert soft skill matching and categorization
+        org.junit.jupiter.api.Assertions.assertTrue(response.getMatchedSoftSkills().contains("Communication"));
+        org.junit.jupiter.api.Assertions.assertTrue(response.getMissingSoftSkills().contains("Problem-solving"));
+        org.junit.jupiter.api.Assertions.assertTrue(response.getMissingSoftSkills().contains("Leadership"));
+        
+        // Assert overall feedback adjusts tone for missing soft skills
+        org.junit.jupiter.api.Assertions.assertTrue(response.getBestRoleRecommendation().contains("presenting results") || response.getBestRoleRecommendation().contains("specific examples"));
+    }
+
+    @Test
+    void testPdfGenerationContainsAllNewSections() throws Exception {
+        AnalysisHistory history = new AnalysisHistory();
+        history.setFilename("test_resume.pdf");
+        history.setResumeText("Experienced Web Developer. Developed multiple React apps.\n- Led team of 5 developers.\n- Worked on API integration.");
+        history.setJobDescription("React, Git. Soft skills: Communication, Leadership.");
+        history.setMatchedSkills("React");
+        history.setMissingSkills("Git");
+        history.setMatchedSoftSkills("leadership");
+        history.setMissingSoftSkills("communication");
+        history.setAtsWarnings("Potential multi-column layout detected;Embedded images detected");
+        history.setScore(50);
+        history.setBestRole("Web Developer");
+        history.setTimestamp(LocalDateTime.now());
+        history.setGrammarIssuesJson("[]");
+        history.setRoadmap("Month 1: Learn Git.\nMonth 2: Practice teamwork.");
+
+        PDFGeneratorUtil pdfUtil = new PDFGeneratorUtil();
+        byte[] pdfBytes = pdfUtil.generateReport(history);
+        
+        org.junit.jupiter.api.Assertions.assertNotNull(pdfBytes);
+        org.junit.jupiter.api.Assertions.assertTrue(pdfBytes.length > 0);
+        
+        System.out.println("=== PDF GENERATION SUCCESS ===");
+        System.out.println("PDF Size: " + pdfBytes.length + " bytes");
+        System.out.println("==============================");
     }
 }

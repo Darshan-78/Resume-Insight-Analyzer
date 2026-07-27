@@ -21,6 +21,10 @@ public class ResumeResponse {
     private List<String> atsWarnings;
     private List<PrioritizedSkill> missingSkillsPrioritized;
 
+    private List<String> detectedSoftSkills;
+    private List<String> matchedSoftSkills;
+    private List<String> missingSoftSkills;
+
     public static class BulletFeedbackItem {
         private String originalBullet;
         private List<String> suggestions;
@@ -97,6 +101,31 @@ public class ResumeResponse {
         this.missingSkillsPrioritized = missingSkillsPrioritized;
     }
 
+    public ResumeResponse(List<String> detectedSkills, List<RoleMatchResponse> roleRanking, String bestRoleRecommendation,
+                          boolean jdMatchMode, List<String> jdSkills, List<String> matchedSkills, List<String> missingSkills,
+                          int score, List<GrammarIssue> grammarIssues, Long id,
+                          List<String> structureSuggestions, List<BulletFeedbackItem> bulletFeedback,
+                          List<String> atsWarnings, List<PrioritizedSkill> missingSkillsPrioritized,
+                          List<String> detectedSoftSkills, List<String> matchedSoftSkills, List<String> missingSoftSkills) {
+        this.detectedSkills = detectedSkills;
+        this.roleRanking = roleRanking;
+        this.bestRoleRecommendation = bestRoleRecommendation;
+        this.jdMatchMode = jdMatchMode;
+        this.jdSkills = jdSkills;
+        this.matchedSkills = matchedSkills;
+        this.missingSkills = missingSkills;
+        this.score = score;
+        this.grammarIssues = grammarIssues;
+        this.id = id;
+        this.structureSuggestions = structureSuggestions;
+        this.bulletFeedback = bulletFeedback;
+        this.atsWarnings = atsWarnings;
+        this.missingSkillsPrioritized = missingSkillsPrioritized;
+        this.detectedSoftSkills = detectedSoftSkills;
+        this.matchedSoftSkills = matchedSoftSkills;
+        this.missingSoftSkills = missingSoftSkills;
+    }
+
     public List<String> getDetectedSkills() {
         return detectedSkills;
     }
@@ -151,5 +180,17 @@ public class ResumeResponse {
 
     public List<PrioritizedSkill> getMissingSkillsPrioritized() {
         return missingSkillsPrioritized;
+    }
+
+    public List<String> getDetectedSoftSkills() {
+        return detectedSoftSkills;
+    }
+
+    public List<String> getMatchedSoftSkills() {
+        return matchedSoftSkills;
+    }
+
+    public List<String> getMissingSoftSkills() {
+        return missingSoftSkills;
     }
 }

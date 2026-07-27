@@ -52,10 +52,23 @@ analysisMode.addEventListener("change", () => {
 resumeText.addEventListener("input", () => {
     lastInteractedInput = "text";
     updateCharacterCount();
+    const validationMessage = document.getElementById("validationMessage");
+    if (validationMessage && resumeText.value.trim()) {
+        validationMessage.classList.add("hidden");
+        validationMessage.textContent = "";
+    }
 });
 
 resumeText.addEventListener("focus", () => {
     lastInteractedInput = "text";
+});
+
+jobDescriptionText.addEventListener("input", () => {
+    const validationMessage = document.getElementById("validationMessage");
+    if (validationMessage && jobDescriptionText.value.trim()) {
+        validationMessage.classList.add("hidden");
+        validationMessage.textContent = "";
+    }
 });
 
 function updateCharacterCount() {
@@ -75,6 +88,16 @@ dropZone.addEventListener("click", () => {
     lastInteractedInput = "file";
     fileInput.click();
 });
+
+// Fallback mobile click handler
+const mobileUploadBtn = document.getElementById("mobileUploadBtn");
+if (mobileUploadBtn) {
+    mobileUploadBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent bubbling up to dropZone click event
+        lastInteractedInput = "file";
+        fileInput.click();
+    });
+}
 
 dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -135,6 +158,11 @@ function handleFileUpload(file) {
             fileStatus.textContent = `File Uploaded: ${data.filename}`;
             lastInteractedInput = "file";
             uploadedAtsWarnings = data.atsWarnings || [];
+            const validationMessage = document.getElementById("validationMessage");
+            if (validationMessage) {
+                validationMessage.classList.add("hidden");
+                validationMessage.textContent = "";
+            }
         }
     })
     .catch(err => {
@@ -168,6 +196,25 @@ function clearInputs() {
     resultPlaceholder.classList.remove("hidden");
     resultsDashboard.classList.add("hidden");
     loader.classList.add("hidden");
+
+    // Hide validation message
+    const validationMessage = document.getElementById("validationMessage");
+    if (validationMessage) {
+        validationMessage.classList.add("hidden");
+        validationMessage.textContent = "";
+    }
+
+    // Hide entire results section
+    const resultsSectionWrapper = document.getElementById("resultsSectionWrapper");
+    if (resultsSectionWrapper) {
+        resultsSectionWrapper.classList.add("hidden");
+    }
+
+    // Show AI hero section
+    const aiHeroSection = document.getElementById("aiHeroSection");
+    if (aiHeroSection) {
+        aiHeroSection.classList.remove("hidden");
+    }
 }
 
 // Expand / Collapse Paste Text input area
@@ -200,8 +247,20 @@ function analyzeResume() {
         filenameVal = uploadedFilename;
     }
 
+    const validationMessage = document.getElementById("validationMessage");
+    if (validationMessage) {
+        validationMessage.classList.add("hidden");
+        validationMessage.textContent = "";
+    }
+
     if (!textVal) {
-        alert("Please paste your resume text or upload a PDF/DOC/DOCX file first.");
+        if (validationMessage) {
+            validationMessage.textContent = "Please upload a resume or paste text";
+            validationMessage.classList.remove("hidden");
+            validationMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            alert("Please upload a resume or paste text");
+        }
         return;
     }
 
@@ -211,11 +270,28 @@ function analyzeResume() {
     const selectedRole = mode === "role" ? roleDropdown.value : null;
 
     if (mode === "jd" && !jdVal) {
-        alert("Please paste the target Job Description to match against.");
+        if (validationMessage) {
+            validationMessage.textContent = "Please paste the target Job Description to match against";
+            validationMessage.classList.remove("hidden");
+            validationMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            alert("Please paste the target Job Description to match against");
+        }
         return;
     }
 
-    // Show Loader
+    // Show Results Section Wrapper and Loader
+    const resultsSectionWrapper = document.getElementById("resultsSectionWrapper");
+    if (resultsSectionWrapper) {
+        resultsSectionWrapper.classList.remove("hidden");
+    }
+
+    // Hide AI hero section
+    const aiHeroSection = document.getElementById("aiHeroSection");
+    if (aiHeroSection) {
+        aiHeroSection.classList.add("hidden");
+    }
+
     loader.classList.remove("hidden");
     resultPlaceholder.classList.add("hidden");
     resultsDashboard.classList.add("hidden");
@@ -228,15 +304,22 @@ function analyzeResume() {
         atsWarnings: lastInteractedInput === "file" ? uploadedAtsWarnings : []
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+    }, 30000); // 30 seconds timeout fallback
+
     fetch("http://localhost:8080/analyze", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "X-Session-Id": sessionId
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
     })
     .then(response => {
+        clearTimeout(timeoutId);
         if (!response.ok) {
             throw new Error("Failed to connect to backend server.");
         }
@@ -247,9 +330,15 @@ function analyzeResume() {
         renderResults(data);
     })
     .catch(err => {
+        clearTimeout(timeoutId);
         loader.classList.add("hidden");
         resultPlaceholder.classList.remove("hidden");
-        alert("Error executing analysis: " + err.message);
+        
+        if (err.name === 'AbortError') {
+            alert("Analysis request timed out after 30 seconds. Please check your backend server and try again.");
+        } else {
+            alert("Error executing analysis: " + err.message);
+        }
     });
 }
 
@@ -259,11 +348,63 @@ function renderResults(data) {
     resultsDashboard.classList.remove("hidden");
 
     // Score display number
-    document.getElementById("scoreNumber").textContent = `${data.score}%`;
+    const scoreVal = data.score || 0;
+    document.getElementById("scoreNumber").textContent = `${scoreVal}%`;
     document.getElementById("recommendationText").textContent = data.bestRoleRecommendation;
 
-    // Render horizontal Chart.js bar chart
-    renderChart(data.score);
+    // Overview metrics
+    const techMatched = data.matchedSkills ? data.matchedSkills.length : 0;
+    const softMatched = data.matchedSoftSkills ? data.matchedSoftSkills.length : 0;
+    const techMissing = data.missingSkills ? data.missingSkills.length : 0;
+    const softMissing = data.missingSoftSkills ? data.missingSoftSkills.length : 0;
+
+    document.getElementById("overviewScore").textContent = `${scoreVal}%`;
+    document.getElementById("overviewRole").textContent = data.bestRoleRecommendation || "-";
+    document.getElementById("overviewMatchedCount").textContent = `${techMatched} Tech, ${softMatched} Soft`;
+    document.getElementById("overviewMissingCount").textContent = `${techMissing} Tech, ${softMissing} Soft`;
+
+    // Update circular progress ring
+    const fill = document.getElementById("scoreRingFill");
+    if (fill) {
+        const offset = 364.42 - (364.42 * scoreVal / 100);
+        fill.style.strokeDashoffset = offset;
+        
+        let color = "#E8A33D"; // Warm Amber/Orange for low scores
+        if (scoreVal >= 70) {
+            color = "url(#scoreGrad)"; // gradient combination
+        } else if (scoreVal >= 40) {
+            color = "#F59E0B"; // Amber
+        }
+        fill.style.stroke = color;
+        const finalColor = scoreVal >= 70 ? "#10B981" : (scoreVal >= 40 ? "#F59E0B" : "#E8A33D");
+        document.getElementById("scoreNumber").style.color = finalColor;
+        document.getElementById("overviewScore").style.color = finalColor;
+    }
+
+    // Reset collapsible grammar state
+    const toggleGrammarBtn = document.getElementById("toggleGrammarBtn");
+    const grammarContent = document.getElementById("grammarContent");
+    if (grammarContent) {
+        grammarContent.classList.add("hidden");
+    }
+    if (toggleGrammarBtn) {
+        if (data.grammarIssues && data.grammarIssues.length > 0) {
+            toggleGrammarBtn.classList.remove("hidden");
+            toggleGrammarBtn.textContent = "Show details";
+        } else {
+            toggleGrammarBtn.classList.add("hidden");
+        }
+    }
+
+    // Reset collapsible roadmap state
+    const toggleRoadmapBtn = document.getElementById("toggleRoadmapBtn");
+    const roadmapCollapsible = document.getElementById("roadmapCollapsible");
+    if (toggleRoadmapBtn) {
+        toggleRoadmapBtn.classList.add("hidden");
+    }
+    if (roadmapCollapsible) {
+        roadmapCollapsible.classList.add("hidden");
+    }
 
     // Populate Matched Skills
     const matchedList = document.getElementById("matchedSkillsList");
@@ -276,14 +417,21 @@ function renderResults(data) {
             matchedList.appendChild(tag);
         });
     } else {
-        matchedList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No matching skills found.</p>";
+        matchedList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No matching tech skills found.</p>";
     }
 
     // Populate Missing Skills (with priority labels)
     const missingList = document.getElementById("missingSkillsList");
     missingList.innerHTML = "";
+    let techMissingPrioritized = [];
     if (data.missingSkillsPrioritized && data.missingSkillsPrioritized.length > 0) {
-        data.missingSkillsPrioritized.forEach(item => {
+        techMissingPrioritized = data.missingSkillsPrioritized.filter(item => {
+            return data.missingSkills && data.missingSkills.includes(item.name);
+        });
+    }
+
+    if (techMissingPrioritized.length > 0) {
+        techMissingPrioritized.forEach(item => {
             const tag = document.createElement("span");
             tag.className = "skill-tag skill-tag-missing";
             const priorityClass = item.priority === "Critical" ? "critical" : "nice";
@@ -299,7 +447,59 @@ function renderResults(data) {
             missingList.appendChild(tag);
         });
     } else {
-        missingList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No missing skills!</p>";
+        missingList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No missing tech skills!</p>";
+    }
+
+    // Populate Matched Soft Skills
+    const matchedSoftList = document.getElementById("matchedSoftSkillsList");
+    matchedSoftList.innerHTML = "";
+    if (data.matchedSoftSkills && data.matchedSoftSkills.length > 0) {
+        data.matchedSoftSkills.forEach(skill => {
+            const tag = document.createElement("span");
+            tag.className = "skill-tag skill-tag-matched";
+            tag.textContent = skill;
+            matchedSoftList.appendChild(tag);
+        });
+    } else {
+        matchedSoftList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No matching soft skills found.</p>";
+    }
+
+    // Populate Missing Soft Skills
+    const missingSoftList = document.getElementById("missingSoftSkillsList");
+    missingSoftList.innerHTML = "";
+    let softMissingPrioritized = [];
+    if (data.missingSkillsPrioritized && data.missingSkillsPrioritized.length > 0) {
+        softMissingPrioritized = data.missingSkillsPrioritized.filter(item => {
+            return data.missingSoftSkills && data.missingSoftSkills.includes(item.name);
+        });
+    }
+
+    if (softMissingPrioritized.length > 0) {
+        softMissingPrioritized.forEach(item => {
+            const tag = document.createElement("span");
+            tag.className = "skill-tag skill-tag-missing";
+            const priorityClass = item.priority === "Critical" ? "critical" : "nice";
+            const priorityText = item.priority === "Critical" ? "Critical" : "Nice to have";
+            tag.innerHTML = `${item.name} <span class="priority-lbl ${priorityClass}">${priorityText}</span>`;
+            missingSoftList.appendChild(tag);
+        });
+    } else if (data.missingSoftSkills && data.missingSoftSkills.length > 0) {
+        data.missingSoftSkills.forEach(skill => {
+            const tag = document.createElement("span");
+            tag.className = "skill-tag skill-tag-missing";
+            tag.textContent = skill;
+            missingSoftList.appendChild(tag);
+        });
+    } else {
+        missingSoftList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No missing soft skills!</p>";
+    }
+
+    // Toggle custom soft-skills suggestion tip
+    const softTip = document.getElementById("softSkillsSuggestion");
+    if (data.missingSoftSkills && data.missingSoftSkills.length > 0) {
+        softTip.classList.remove("hidden");
+    } else {
+        softTip.classList.add("hidden");
     }
 
     // Show Role leaderboards (If in Role Match mode and Rankings exist)
@@ -430,6 +630,7 @@ function renderResults(data) {
     } else {
         grammarList.innerHTML = "<p class='placeholder-text' style='margin:0;font-size:12px;'>No grammar issues found.</p>";
     }
+    switchResultTab('overview');
 }
 
 // Chart.js Match Index bar chart mapping
@@ -438,7 +639,9 @@ function renderChart(score) {
         scoreChart.destroy();
     }
 
-    const ctx = document.getElementById("scoreChart").getContext("2d");
+    const canvas = document.getElementById("scoreChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
     scoreChart = new Chart(ctx, {
         type: "bar",
         data: {
@@ -504,6 +707,15 @@ function getAIRoadmap() {
     })
     .then(data => {
         roadmapLoading.classList.add("hidden");
+        
+        const collapsible = document.getElementById("roadmapCollapsible");
+        const btn = document.getElementById("toggleRoadmapBtn");
+        
+        if (collapsible) collapsible.classList.remove("hidden");
+        if (btn) {
+            btn.classList.remove("hidden");
+            btn.textContent = "Hide details";
+        }
         roadmapDisplay.classList.remove("hidden");
         
         // Basic Markdown-to-HTML parser mapping for bold text and list highlights
@@ -640,10 +852,11 @@ function loadHistoryList() {
             const historyItem = document.createElement("div");
             historyItem.className = "history-item";
             
+            const scoreClass = item.score >= 70 ? "score-high" : (item.score >= 40 ? "score-mid" : "score-low");
             historyItem.innerHTML = `
                 <div class="history-item-header">
                     <span class="history-file" title="${item.filename}">${item.filename}</span>
-                    <span class="history-score">${item.score}%</span>
+                    <span class="history-score ${scoreClass}">${item.score}%</span>
                 </div>
                 <div class="history-meta">
                     <div>Mode: ${item.jobDescription ? "JD Match" : "Role list"}</div>
@@ -697,6 +910,16 @@ function clearSessionHistory() {
 function reloadHistoryState(item) {
     clearInputs();
     
+    // Hide AI hero section and show results wrapper
+    const aiHeroSection = document.getElementById("aiHeroSection");
+    if (aiHeroSection) {
+        aiHeroSection.classList.add("hidden");
+    }
+    const resultsSectionWrapper = document.getElementById("resultsSectionWrapper");
+    if (resultsSectionWrapper) {
+        resultsSectionWrapper.classList.remove("hidden");
+    }
+    
     resumeText.value = item.resumeText;
     updateCharacterCount();
 
@@ -726,15 +949,36 @@ function reloadHistoryState(item) {
         bestRoleRecommendation: item.bestRole,
         matchedSkills: item.matchedSkills ? item.matchedSkills.split(",") : [],
         missingSkills: item.missingSkills ? item.missingSkills.split(",") : [],
-        missingSkillsPrioritized: item.missingSkills ? item.missingSkills.split(",").map(s => ({
-            name: s.trim(),
-            priority: item.jobDescription ? "Critical" : "Nice to have"
-        })) : [],
+        matchedSoftSkills: item.matchedSoftSkills ? item.matchedSoftSkills.split(",") : [],
+        missingSoftSkills: item.missingSoftSkills ? item.missingSoftSkills.split(",") : [],
+        missingSkillsPrioritized: [],
         jdMatchMode: !!item.jobDescription,
         grammarIssues: [],
         roleRanking: [],
-        atsWarnings: ["ATS check not applicable (historical record)"]
+        atsWarnings: (item.atsWarnings && item.atsWarnings.trim()) ? item.atsWarnings.split(";") : []
     };
+
+    // Populate mocked priority list for reloading
+    if (item.missingSkills) {
+        item.missingSkills.split(",").forEach(s => {
+            if (s.trim()) {
+                mockResponse.missingSkillsPrioritized.push({
+                    name: s.trim(),
+                    priority: item.jobDescription ? "Critical" : "Nice to have"
+                });
+            }
+        });
+    }
+    if (item.missingSoftSkills) {
+        item.missingSoftSkills.split(",").forEach(s => {
+            if (s.trim()) {
+                mockResponse.missingSkillsPrioritized.push({
+                    name: s.trim(),
+                    priority: item.jobDescription ? "Critical" : "Nice to have"
+                });
+            }
+        });
+    }
 
     // Load grammar issues list safely
     try {
@@ -751,6 +995,14 @@ function reloadHistoryState(item) {
     if (item.roadmap) {
         document.getElementById("roadmapTriggerArea").classList.add("hidden");
         const roadmapDisplay = document.getElementById("roadmapDisplay");
+        const collapsible = document.getElementById("roadmapCollapsible");
+        const btn = document.getElementById("toggleRoadmapBtn");
+        
+        if (collapsible) collapsible.classList.remove("hidden");
+        if (btn) {
+            btn.classList.remove("hidden");
+            btn.textContent = "Hide details";
+        }
         roadmapDisplay.classList.remove("hidden");
 
         let formattedText = item.roadmap
@@ -765,9 +1017,36 @@ function reloadHistoryState(item) {
     }
 }
 
+// Tagline Rotation Logic
+function initTaglineRotation() {
+    const taglines = document.querySelectorAll("#aiHeroSection .tagline");
+    if (taglines.length === 0) return;
+    
+    let currentIndex = 0;
+    
+    function rotateTaglines() {
+        const currentTagline = taglines[currentIndex];
+        currentTagline.classList.remove("active");
+        currentTagline.classList.add("fade-out");
+        
+        setTimeout(() => {
+            currentTagline.classList.remove("fade-out");
+            currentIndex = (currentIndex + 1) % taglines.length;
+            
+            const nextTagline = taglines[currentIndex];
+            nextTagline.classList.add("active");
+        }, 600); // match transition duration in CSS
+    }
+    
+    // Rotate every 3.6s (3s visibility + 0.6s transition)
+    setInterval(rotateTaglines, 3600);
+}
+
 // Fetch dynamic roles from backend on startup
 document.addEventListener("DOMContentLoaded", () => {
-    fetch("/roles")
+    initTaglineRotation();
+    
+    fetch("http://localhost:8080/roles")
     .then(response => {
         if (!response.ok) {
             throw new Error("Failed to load roles from backend");
@@ -859,4 +1138,100 @@ function checkBulletPointsClient(text) {
         }
     });
     return feedback;
+}
+
+function toggleGrammarDetails() {
+    const content = document.getElementById("grammarContent");
+    const btn = document.getElementById("toggleGrammarBtn");
+    if (!content || !btn) return;
+    if (content.classList.contains("hidden")) {
+        content.classList.remove("hidden");
+        btn.textContent = "Hide details";
+    } else {
+        content.classList.add("hidden");
+        btn.textContent = "Show details";
+    }
+}
+
+function toggleRoadmapDetails() {
+    const content = document.getElementById("roadmapCollapsible");
+    const btn = document.getElementById("toggleRoadmapBtn");
+    if (!content || !btn) return;
+    if (content.classList.contains("hidden")) {
+        content.classList.remove("hidden");
+        btn.textContent = "Hide details";
+    } else {
+        content.classList.add("hidden");
+        btn.textContent = "Show details";
+    }
+}
+
+// Toggle Hamburger Menu
+function toggleMenu(event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const menu = document.getElementById("menuDropdown");
+    if (menu) {
+        if (menu.classList.contains("hidden")) {
+            menu.classList.remove("hidden");
+        } else {
+            menu.classList.add("hidden");
+        }
+    }
+}
+
+// Menu Action: View History
+function menuViewHistory(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    // Close menu first
+    const menu = document.getElementById("menuDropdown");
+    if (menu) menu.classList.add("hidden");
+    
+    // Toggle history sidebar
+    toggleHistorySidebar();
+}
+
+// Menu Action: Clear Local Cache
+function menuClearCache(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    // Close menu first
+    const menu = document.getElementById("menuDropdown");
+    if (menu) menu.classList.add("hidden");
+
+    if (confirm("Reset current upload states and clear inputs?")) {
+        clearInputs();
+    }
+}
+
+// Close menu when clicking outside
+document.addEventListener("click", (event) => {
+    const menu = document.getElementById("menuDropdown");
+    const menuBtn = document.getElementById("menuBtn");
+    if (menu && !menu.classList.contains("hidden")) {
+        if (!menu.contains(event.target) && event.target !== menuBtn) {
+            menu.classList.add("hidden");
+        }
+    }
+});
+
+// Switch results display tabs
+function switchResultTab(tabId) {
+    const panes = document.querySelectorAll(".tab-pane");
+    panes.forEach(pane => pane.classList.add("hidden"));
+
+    const buttons = document.querySelectorAll(".tab-btn");
+    buttons.forEach(btn => btn.classList.remove("active"));
+
+    const activePane = document.getElementById(`tab-${tabId}`);
+    if (activePane) activePane.classList.remove("hidden");
+
+    const activeBtn = Array.from(buttons).find(btn => btn.getAttribute("onclick").includes(`'${tabId}'`));
+    if (activeBtn) activeBtn.classList.add("active");
 }

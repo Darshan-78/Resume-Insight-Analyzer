@@ -9,6 +9,7 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PDFGeneratorUtil {
@@ -51,16 +52,124 @@ public class PDFGeneratorUtil {
 
         // Match Scores
         writeSectionHeader("Match Results");
-        writeParagraph("Match Score: " + history.getScore() + "%");
+        writeScoreParagraph(history.getScore());
         writeParagraph("Best Matched Role: " + (history.getBestRole() != null ? history.getBestRole() : "N/A"));
         drawSeparator();
 
         // Skill Badges list representation
+        ResumeAnalyzerService analyzer = new ResumeAnalyzerService();
         writeSectionHeader("Skills Summary");
-        writeParagraph("Matched Skills: " + (history.getMatchedSkills() != null && !history.getMatchedSkills().isEmpty() 
+
+        // 1. Technical Skills
+        writeSubtitle("Technical Skills");
+        writeParagraph("Matched Technical Skills: " + (history.getMatchedSkills() != null && !history.getMatchedSkills().isEmpty() 
             ? history.getMatchedSkills().replace(",", ", ") : "None"));
-        writeParagraph("Missing Skills: " + (history.getMissingSkills() != null && !history.getMissingSkills().isEmpty() 
-            ? history.getMissingSkills().replace(",", ", ") : "None"));
+
+        List<String> missingTechList = new ArrayList<>();
+        if (history.getMissingSkills() != null && !history.getMissingSkills().isEmpty()) {
+            missingTechList = Arrays.asList(history.getMissingSkills().split(","));
+        }
+        List<ResumeResponse.PrioritizedSkill> prioritizedTech = analyzer.prioritizeMissingSkills(missingTechList, history.getJobDescription());
+        List<String> techListFormatted = new ArrayList<>();
+        for (ResumeResponse.PrioritizedSkill ps : prioritizedTech) {
+            techListFormatted.add(ps.getName() + " (" + ps.getPriority() + ")");
+        }
+        String missingTechStr = techListFormatted.isEmpty() ? "None" : String.join(", ", techListFormatted);
+        writeParagraph("Missing Technical Skills: " + missingTechStr);
+
+        yPosition -= 6; // micro line gap
+
+        // 2. Soft Skills
+        writeSubtitle("Soft Skills");
+        List<String> matchedSoftList = new ArrayList<>();
+        if (history.getMatchedSoftSkills() != null && !history.getMatchedSoftSkills().isEmpty()) {
+            matchedSoftList = Arrays.asList(history.getMatchedSoftSkills().split(","));
+        }
+        List<String> matchedSoftFormatted = new ArrayList<>();
+        for (String s : matchedSoftList) {
+            matchedSoftFormatted.add(ResumeAnalyzerService.getSkillDisplayName(s));
+        }
+        String matchedSoftStr = matchedSoftFormatted.isEmpty() ? "None" : String.join(", ", matchedSoftFormatted);
+        writeParagraph("Matched Soft Skills: " + matchedSoftStr);
+
+        List<String> missingSoftList = new ArrayList<>();
+        if (history.getMissingSoftSkills() != null && !history.getMissingSoftSkills().isEmpty()) {
+            missingSoftList = Arrays.asList(history.getMissingSoftSkills().split(","));
+        }
+        List<ResumeResponse.PrioritizedSkill> prioritizedSoft = analyzer.prioritizeMissingSkills(missingSoftList, history.getJobDescription());
+        List<String> softListFormatted = new ArrayList<>();
+        for (ResumeResponse.PrioritizedSkill ps : prioritizedSoft) {
+            softListFormatted.add(ps.getName() + " (" + ps.getPriority() + ")");
+        }
+        String missingSoftStr = softListFormatted.isEmpty() ? "None" : String.join(", ", softListFormatted);
+        writeParagraph("Missing Soft Skills: " + missingSoftStr);
+        if (!missingSoftList.isEmpty()) {
+            writeParagraph("Suggestion: Consider adding a specific example in your resume that demonstrates these soft skills (e.g. a project where you presented results to a team or resolved a conflict).");
+        }
+
+        drawSeparator();
+
+        // Resume Health Check
+        writeSectionHeader("Resume Health Check");
+
+        // 1. Structure / Expected Sections
+        writeSubtitle("Structure & Expected Sections");
+        List<String> structureSuggestions = analyzer.checkResumeStructure(history.getResumeText());
+        if (structureSuggestions.isEmpty()) {
+            writeParagraph("• All standard expected sections (Contact Info, Education, Skills, Projects/Experience) detected!");
+        } else {
+            for (String suggestion : structureSuggestions) {
+                writeParagraph("• " + suggestion);
+            }
+        }
+
+        yPosition -= 6; // micro line gap
+
+        // 2. Bullet Point Strength Checker
+        writeSubtitle("Bullet Point Feedback");
+        List<ResumeResponse.BulletFeedbackItem> bulletFeedback = analyzer.checkBulletPoints(history.getResumeText());
+        if (bulletFeedback.isEmpty()) {
+            writeParagraph("• All bullet points have strong action verbs and quantifiable metrics!");
+        } else {
+            for (int i = 0; i < Math.min(bulletFeedback.size(), 8); i++) {
+                ResumeResponse.BulletFeedbackItem item = bulletFeedback.get(i);
+                writeParagraph("• Bullet: \"" + item.getOriginalBullet() + "\"");
+                for (String sug : item.getSuggestions()) {
+                    writeParagraph("  - Suggestion: " + sug);
+                }
+            }
+            if (bulletFeedback.size() > 8) {
+                writeParagraph("• ... and " + (bulletFeedback.size() - 8) + " more bullet point suggestions.");
+            }
+        }
+
+        yPosition -= 6; // micro line gap
+
+        // 3. ATS Friendliness Check
+        writeSubtitle("ATS Friendliness Check");
+        String atsWarningsStr = history.getAtsWarnings();
+        boolean isPdf = history.getFilename() != null && history.getFilename().toLowerCase().endsWith(".pdf");
+
+        if (isPdf) {
+            if (atsWarningsStr == null || atsWarningsStr.trim().isEmpty()) {
+                writeParagraph("• No major ATS parsing risks found for this resume.");
+            } else {
+                String[] warnings = atsWarningsStr.split(";");
+                boolean hasWarnings = false;
+                for (String warning : warnings) {
+                    if (!warning.trim().isEmpty()) {
+                        writeParagraph("• " + warning.trim());
+                        hasWarnings = true;
+                    }
+                }
+                if (!hasWarnings) {
+                    writeParagraph("• No major ATS parsing risks found for this resume.");
+                }
+            }
+        } else {
+            writeParagraph("• Layout diagnostics not applicable or not generated for this format.");
+        }
+
         drawSeparator();
 
         // Grammar & Spelling Review list
@@ -143,7 +252,7 @@ public class PDFGeneratorUtil {
         checkNewPageRequired(28);
         contentStream.beginText();
         contentStream.setFont(PDType1Font.HELVETICA_BOLD, 13);
-        contentStream.setNonStrokingColor(13, 115, 119); // Deep Teal (#0D7377)
+        contentStream.setNonStrokingColor(108, 92, 231); // Premium Purple (#6C5CE7)
         contentStream.newLineAtOffset(MARGIN, yPosition);
         contentStream.showText(text);
         contentStream.endText();
@@ -154,6 +263,28 @@ public class PDFGeneratorUtil {
     private void writeParagraph(String text) throws IOException {
         // Standard body leading 14
         writeWrappedText(text, PDType1Font.HELVETICA, 9, 14);
+    }
+
+    private void writeScoreParagraph(int score) throws IOException {
+        checkNewPageRequired(14);
+        contentStream.beginText();
+        contentStream.setFont(PDType1Font.HELVETICA, 9);
+        contentStream.newLineAtOffset(MARGIN, yPosition);
+        contentStream.showText("Match Score: ");
+        
+        // Color-coded score text
+        if (score >= 70) {
+            contentStream.setNonStrokingColor(16, 185, 129); // Fresh Green (#10B981)
+        } else if (score >= 40) {
+            contentStream.setNonStrokingColor(245, 158, 11); // Amber (#F59E0B)
+        } else {
+            contentStream.setNonStrokingColor(232, 163, 61); // Warm Amber/Orange (#E8A33D)
+        }
+        
+        contentStream.showText(score + "%");
+        contentStream.setNonStrokingColor(0, 0, 0); // Reset color
+        contentStream.endText();
+        yPosition -= 14;
     }
 
     private void writeLongText(String text) throws IOException {

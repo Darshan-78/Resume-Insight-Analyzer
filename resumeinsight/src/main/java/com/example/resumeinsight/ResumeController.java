@@ -250,9 +250,7 @@ public class ResumeController {
                 return ResponseEntity.badRequest().body(result);
             }
 
-            System.out.println("DEBUG RAW EXTRACTION START");
-            System.out.println(text);
-            System.out.println("DEBUG RAW EXTRACTION END");
+
 
             result.put("text", postProcessExtractedText(text));
             result.put("filename", originalFilename);
@@ -320,6 +318,9 @@ public class ResumeController {
         history.setScore(response.getScore());
         history.setMatchedSkills(String.join(",", response.getMatchedSkills()));
         history.setMissingSkills(String.join(",", response.getMissingSkills()));
+        history.setMatchedSoftSkills(response.getMatchedSoftSkills() != null ? String.join(",", response.getMatchedSoftSkills()) : "");
+        history.setMissingSoftSkills(response.getMissingSoftSkills() != null ? String.join(",", response.getMissingSoftSkills()) : "");
+        history.setAtsWarnings(response.getAtsWarnings() != null ? String.join(";", response.getAtsWarnings()) : "");
         history.setBestRole(response.getBestRoleRecommendation());
         history.setTimestamp(LocalDateTime.now());
         history.setSessionId(sessionId);
@@ -348,7 +349,10 @@ public class ResumeController {
             response.getStructureSuggestions(),
             response.getBulletFeedback(),
             response.getAtsWarnings(),
-            response.getMissingSkillsPrioritized()
+            response.getMissingSkillsPrioritized(),
+            response.getDetectedSoftSkills(),
+            response.getMatchedSoftSkills(),
+            response.getMissingSoftSkills()
         );
     }
 
@@ -382,13 +386,20 @@ public class ResumeController {
         }
 
         // Construct prompt using missing skills and score
-        String skillsList = history.getMissingSkills() != null && !history.getMissingSkills().isEmpty() 
-            ? history.getMissingSkills().replace(",", ", ") 
-            : "None";
+        List<String> combinedMissing = new ArrayList<>();
+        if (history.getMissingSkills() != null && !history.getMissingSkills().isEmpty()) {
+            combinedMissing.addAll(Arrays.asList(history.getMissingSkills().split(",")));
+        }
+        if (history.getMissingSoftSkills() != null && !history.getMissingSoftSkills().isEmpty()) {
+            combinedMissing.addAll(Arrays.asList(history.getMissingSoftSkills().split(",")));
+        }
+        String skillsList = combinedMissing.isEmpty() ? "None" : String.join(", ", combinedMissing);
+        
         String prompt = "You are an expert career coach and tech lead. A candidate scored " + history.getScore() + 
             "% match for their target role/job description. They are missing these skills: [" + skillsList + "]. " +
             "Create a highly practical, structured 3-month weekly learning roadmap to acquire these missing skills. " +
             "Organize the timeline clearly (Month 1, Month 2, Month 3, and weeks). Include resource suggestions and 1 project suggestion. " +
+            "If there are missing soft skills (like Communication, Teamwork, Leadership, etc.), do not treat them as subjects to learn via courses. Instead, suggest specific examples, experiences, or collaborative project scenarios the candidate can add to their resume to demonstrate these skills (e.g. a project where they presented results or coordinated cross-functional collaboration). " +
             "Keep the tone encouraging, technical, and direct. Do not include boilerplate introductory greeting text.";
 
         String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=" + geminiApiKey;
