@@ -3,3 +3,4 @@ resumeinsight/target/
 .vscode/
 .idea/
 hs_err_pid*.log
+**/application-local.properties

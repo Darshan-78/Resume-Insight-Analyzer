@@ -13,6 +13,11 @@ if (!sessionId) {
     document.cookie = "resume_session_id=" + sessionId + "; max-age=" + (30 * 24 * 60 * 60) + "; path=/; SameSite=Lax";
 }
 
+// Determine backend API base URL dynamically to support both local development and production
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname)
+    ? (window.location.port === '8080' ? '' : 'http://localhost:8080')
+    : '';
+
 // Global Application State Variables
 let currentAnalysisId = null;
 let uploadedFilename = null;
@@ -135,7 +140,7 @@ function handleFileUpload(file) {
     formData.append("file", file);
     fileStatus.textContent = "Extracting text from file...";
 
-    fetch("http://localhost:8080/upload", {
+    fetch(`${API_BASE}/upload`, {
         method: "POST",
         headers: {
             "X-Session-Id": sessionId
@@ -309,7 +314,7 @@ function analyzeResume() {
         controller.abort();
     }, 30000); // 30 seconds timeout fallback
 
-    fetch("http://localhost:8080/analyze", {
+    fetch(`${API_BASE}/analyze`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -693,7 +698,7 @@ function getAIRoadmap() {
     triggerArea.classList.add("hidden");
     roadmapLoading.classList.remove("hidden");
 
-    fetch(`http://localhost:8080/analyze/${currentAnalysisId}/roadmap`, {
+    fetch(`${API_BASE}/analyze/${currentAnalysisId}/roadmap`, {
         method: "POST",
         headers: {
             "X-Session-Id": sessionId
@@ -739,7 +744,7 @@ function getAIRoadmap() {
 // Stream PDF Report download
 function downloadPdfReport() {
     if (!currentAnalysisId) return;
-    window.location.href = `http://localhost:8080/analyze/${currentAnalysisId}/pdf`;
+    window.location.href = `${API_BASE}/analyze/${currentAnalysisId}/pdf`;
 }
 
 // Toggle History Sidebar View
@@ -830,7 +835,7 @@ function loadHistoryList() {
     const historyList = document.getElementById("historyList");
     historyList.innerHTML = "<p class='placeholder-text' style='text-align:center;'>Loading runs...</p>";
 
-    fetch("http://localhost:8080/history", {
+    fetch(`${API_BASE}/history`, {
         headers: {
             "X-Session-Id": sessionId
         }
@@ -884,7 +889,7 @@ function clearSessionHistory() {
         return;
     }
 
-    fetch("http://localhost:8080/history", {
+    fetch(`${API_BASE}/history`, {
         method: "DELETE",
         headers: {
             "X-Session-Id": sessionId
@@ -1046,7 +1051,7 @@ function initTaglineRotation() {
 document.addEventListener("DOMContentLoaded", () => {
     initTaglineRotation();
     
-    fetch("http://localhost:8080/roles")
+    fetch(`${API_BASE}/roles`)
     .then(response => {
         if (!response.ok) {
             throw new Error("Failed to load roles from backend");
