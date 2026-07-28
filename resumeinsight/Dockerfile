@@ -22,4 +22,5 @@ EXPOSE 8080
 
 # Environment variables will be passed in at runtime by Render.
 # Spring Boot automatically maps env variables to application properties.
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70.0", "-XX:+UseSerialGC", "-Xss256k", "-jar", "app.jar"]
+

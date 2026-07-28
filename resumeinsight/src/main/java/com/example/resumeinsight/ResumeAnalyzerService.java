@@ -289,6 +289,21 @@ public class ResumeAnalyzerService {
         return false;
     }
 
+    private static JLanguageTool langTool = null;
+
+    private static synchronized JLanguageTool getLanguageTool() {
+        if (langTool == null) {
+            try {
+                langTool = new JLanguageTool(new AmericanEnglish());
+                langTool.disableCategory(new CategoryId("TYPOGRAPHY"));
+                langTool.disableCategory(new CategoryId("STYLE"));
+            } catch (Exception e) {
+                System.err.println("Failed to initialize JLanguageTool: " + e.getMessage());
+            }
+        }
+        return langTool;
+    }
+
     /**
      * Run English spelling and grammar checks on text using LanguageTool.
      */
@@ -297,14 +312,17 @@ public class ResumeAnalyzerService {
         if (text == null || text.trim().isEmpty()) {
             return issues;
         }
+        
+        JLanguageTool tool = getLanguageTool();
+        if (tool == null) {
+            return issues;
+        }
+
         try {
-            JLanguageTool langTool = new JLanguageTool(new AmericanEnglish());
-            
-            // Disable low-value rule categories
-            langTool.disableCategory(new CategoryId("TYPOGRAPHY"));
-            langTool.disableCategory(new CategoryId("STYLE"));
-            
-            List<RuleMatch> matches = langTool.check(text);
+            List<RuleMatch> matches;
+            synchronized (tool) {
+                matches = tool.check(text);
+            }
             for (RuleMatch match : matches) {
                 String ruleId = match.getRule().getId();
                 String categoryId = "";
