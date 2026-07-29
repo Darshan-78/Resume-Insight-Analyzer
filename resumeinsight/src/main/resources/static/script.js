@@ -16,7 +16,7 @@ if (!sessionId) {
 // Determine backend API base URL dynamically to support both local development and production
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname)
     ? (window.location.port === '8080' ? '' : 'http://localhost:8080')
-    : '';
+    : 'https://resumeinsight-fz38.onrender.com';
 
 // Global Application State Variables
 let currentAnalysisId = null;
