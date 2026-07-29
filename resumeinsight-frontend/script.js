@@ -744,7 +744,32 @@ function getAIRoadmap() {
 // Stream PDF Report download
 function downloadPdfReport() {
     if (!currentAnalysisId) return;
-    window.location.href = `${API_BASE}/analyze/${currentAnalysisId}/pdf`;
+
+    fetch(`${API_BASE}/analyze/${currentAnalysisId}/pdf`, {
+        headers: {
+            "X-Session-Id": sessionId
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to download PDF report. Status: " + response.status);
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `resume-insight-report-${currentAnalysisId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(err => {
+        alert(err.message);
+    });
 }
 
 // Toggle History Sidebar View
